@@ -1,0 +1,123 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: 'Horst';
+  src: url('../src/assets/fonts/HorstBlackletter.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    /* Offset for fixed header when scrolling to anchor links */
+    scroll-padding-top: 140px; 
+  }
+}
+
+@layer utilities {
+  .text-stroke-black {
+    -webkit-text-stroke: 1px #000;
+    text-stroke: 1px #000;
+  }
+  .text-stroke-2-black {
+    -webkit-text-stroke: 2px #000;
+    text-stroke: 2px #000;
+  }
+  .text-stroke-none {
+    -webkit-text-stroke: 0px transparent;
+    text-stroke: 0px transparent;
+  }
+}
+
+@layer components {
+  /* Liquid Metal 2D Gradient Animation */
+  @keyframes liquid-metal {
+    0% { background-position: 0% 0%; }
+    25% { background-position: 100% 0%; }
+    50% { background-position: 100% 100%; }
+    75% { background-position: 0% 100%; }
+    100% { background-position: 0% 0%; }
+  }
+
+  :root {
+    --liquid-metal-bg: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.8) 0%, rgba(150,150,150,0) 50%), 
+                       linear-gradient(135deg, #444 0%, #fff 25%, #888 50%, #eee 75%, #333 100%);
+  }
+
+  .metal-text-hover {
+    transition: color 0.3s ease;
+    position: relative;
+    display: inline-block;
+  }
+  
+  .metal-text-hover:hover {
+    background-image: var(--liquid-metal-bg);
+    background-size: 300% 300%;
+    color: transparent;
+    -webkit-background-clip: text;
+    background-clip: text;
+    animation: liquid-metal 8s ease-in-out infinite;
+  }
+
+  /* Nowa gruba linia podkreślenia dla linków nawigacji */
+  .metal-nav-link {
+    position: relative;
+    display: inline-block;
+    padding-bottom: 4px;
+    transition: color 0.3s ease;
+  }
+
+  .metal-nav-link::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 0%;
+    height: 4px;
+    background-image: var(--liquid-metal-bg);
+    background-size: 300% 300%;
+    animation: liquid-metal 8s ease-in-out infinite;
+    transition: width 0.3s ease;
+  }
+
+  .metal-nav-link:hover {
+    background-image: var(--liquid-metal-bg);
+    background-size: 300% 300%;
+    color: transparent;
+    -webkit-background-clip: text;
+    background-clip: text;
+    animation: liquid-metal 8s ease-in-out infinite;
+  }
+
+  .metal-nav-link:hover::after {
+    width: 100%;
+  }
+
+  .metal-bg {
+    background-image: var(--liquid-metal-bg);
+    background-size: 300% 300%;
+    animation: liquid-metal 8s ease-in-out infinite;
+    color: black;
+    border: 1px solid rgba(255,255,255,0.2);
+    box-shadow: inset 0 0 20px rgba(255,255,255,0.5);
+  }
+
+  .metal-border-focus:focus-within {
+    position: relative;
+  }
+  
+  .metal-border-focus:focus-within::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background-image: var(--liquid-metal-bg);
+    background-size: 300% 300%;
+    animation: liquid-metal 4s ease-in-out infinite;
+  }
+}

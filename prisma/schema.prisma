@@ -1,0 +1,88 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Order {
+  id               String      @id @default(uuid())
+  orderNumber      String      @unique // e.g. TG-2026-000123
+  email            String
+  firstName        String
+  lastName         String
+  country          String
+  city             String
+  postalCode       String
+  street           String
+  houseNumber      String
+  companyName      String?
+  nip              String?
+  
+  subtotal         Float
+  discount         Float
+  shipping         Float
+  total            Float
+  
+  paymentProvider  String?     // np. stripe
+  paymentStatus    String      @default("pending") // pending, paid, canceled, refunded, expired
+  fulfillmentStatus String     @default("processing") // processing, shipped, delivered
+  stripeSessionId  String?     @unique
+  stripePaymentIntentId String? @unique
+
+  // InPost / Delivery fields
+  deliveryMethod   String      @default("courier") // 'inpost_locker' or 'inpost_courier'
+  inpostPointId    String?     // np. WAW112M
+  inpostPointName  String?     
+  inpostPointAddress String?   
+  inpostPointCity  String?
+  inpostPointPostalCode String?
+  shipmentId       String?     // ID przesyłki w systemie InPost
+  trackingNumber   String?     // Numer śledzenia paczki
+  shipmentStatus   String?     // Status z API InPost
+  labelUrl         String?     // Link do etykiety
+  
+  trackingToken    String      @unique @default(uuid())
+
+  appliedCode      String?
+  partnerId        String?
+  
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  items            OrderItem[]
+}
+
+model OrderItem {
+  id          String   @id @default(uuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id])
+  productId   String
+  variantId   String?
+  size        String?
+  quantity    Int
+  unitPrice   Float
+  currency    String   @default("PLN")
+  image       String?
+  productName String
+}
+
+model PromoCode {
+  id             String    @id @default(uuid())
+  code           String    @unique
+  type           String    // "percentage" lub "fixed"
+  value          Float     
+  active         Boolean   @default(true)
+  expiration     DateTime?
+  usageLimit     Int?
+  usageCount     Int       @default(0)
+  productScope   String?   
+  collectionScope String?
+  minimumCartValue Float?
+  partnerId      String?
+}

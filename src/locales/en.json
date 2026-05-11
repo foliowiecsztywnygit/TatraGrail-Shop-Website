@@ -1,0 +1,56 @@
+{
+  "translation": {
+    "header": {
+      "topbar": "● FREE WORLDWIDE SHIPPING ON ORDERS OVER 250PLN",
+      "home": "HOME",
+      "originals": "TATRAGRAIL COLLECTION",
+      "mokasynek": "MOKASYNEK",
+      "drop": "DROP"
+    },
+    "hero": {
+      "title_1": "FOR LORDS AND",
+      "title_2": "HIGHLANDERS ™",
+      "subtitle": "FREE SHIPPING FROM 250 PLN - BUY 3 ITEMS, GET 4TH FREE",
+      "cta": "SHOP NOW"
+    },
+    "pdp": {
+      "social_proof": "{{count}} PEOPLE BOUGHT THIS ITEM THIS WEEK",
+      "color": "COLOR",
+      "size": "SIZE",
+      "size_guide": "SIZE GUIDE",
+      "low_stock": "LOW STOCK - HURRY UP!",
+      "bundle": {
+        "one_item": "One Item",
+        "standard_price": "Standard price",
+        "two_items": "Two Items",
+        "you_save": "You save",
+        "most_popular": "MOST POPULAR",
+        "choose": "Choose",
+        "choose_product": "CHOOSE PRODUCT",
+        "get_3_1_free": "GET 3 + 1 FREE ITEM",
+        "free_shipping": "Free Shipping",
+        "choose_free_item": "Choose 1 FREE item"
+      },
+      "add_to_cart": "ADD TO CART",
+      "select_options": "SELECT OPTIONS",
+      "accordion_details": "DETAILS",
+      "accordion_material": "MATERIAL & CARE",
+      "accordion_shipping": "SHIPPING & RETURNS"
+    },
+    "footer": {
+      "statement": "STERILE AESTHETICS. HIGH FASHION STREETWEAR. NO COMPROMISES. DESIGNED FOR THE AVANT-GARDE.",
+      "info_title": "INFO",
+      "links": {
+        "shipping": "SHIPPING & RETURNS",
+        "terms": "TERMS OF SERVICE",
+        "privacy": "PRIVACY POLICY",
+        "contact": "CONTACT"
+      },
+      "newsletter": {
+        "title": "NEWSLETTER",
+        "placeholder": "ENTER YOUR EMAIL"
+      },
+      "copyright": "© 2026 TATRAGRAIL. ALL RIGHTS RESERVED."
+    }
+  }
+}

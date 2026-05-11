@@ -1,0 +1,55 @@
+{
+  "translation": {
+    "header": {
+      "topbar": "● DARMOWE DOSTAWY DO CAŁEJ POLSKI POWYŻEJ 250PLN",
+      "home": "HOME",
+      "originals": "KOLEKCJA TATRAGRAIL",
+      "mokasynek": "MOKASYNEK",
+      "drop": "DROP"
+    },
+    "hero": {
+      "title_1": "DLO PANECKÓW I",
+      "title_2": "DLO NASYCH ™",
+      "subtitle": "DARMOWA DOSTAWA OD 250 PLN - KUP 3 RZECZY, 4 DOSTANIESZ GRATIS",
+      "cta": "KUP TERAZ"
+    },
+    "pdp": {
+      "social_proof": "{{count}} OSÓB KUPIŁO TEN PRODUKT W TYM TYGODNIU",
+      "color": "KOLOR",
+      "size": "ROZMIAR",
+      "size_guide": "TABELA ROZMIARÓW",
+      "low_stock": "MAŁA ILOŚĆ W MAGAZYNIE - ŚPIESZ SIĘ!",
+      "bundle": {
+        "one_item": "1 Sztuka",
+        "standard_price": "Cena Standardowa",
+        "two_items": "2 Sztuki",
+        "you_save": "Oszczędzasz",
+        "most_popular": "NAJPOPULARNIEJSZE",
+        "get_3_1_free": "3 + 1 Gratis",
+        "free_shipping": "+ DARMOWA WYSYŁKA",
+        "choose_free_item": "Wybierz darmowy produkt",
+        "choose_product": "WYBIERZ PRODUKT"
+      },
+      "add_to_cart": "DODAJ DO KOSZYKA",
+      "select_options": "WYBIERZ OPCJE",
+      "accordion_details": "SZCZEGÓŁY",
+      "accordion_material": "MATERIAŁ I PIELĘGNACJA",
+      "accordion_shipping": "WYSYŁKA I ZWROTY"
+    },
+    "footer": {
+      "statement": "STERILE AESTHETICS. HIGH FASHION STREETWEAR. NO COMPROMISES. DESIGNED FOR THE AVANT-GARDE.",
+      "info_title": "INFO",
+      "links": {
+        "shipping": "WYSYŁKA I ZWROTY",
+        "terms": "REGULAMIN",
+        "privacy": "POLITYKA PRYWATNOŚCI",
+        "contact": "KONTAKT"
+      },
+      "newsletter": {
+        "title": "NEWSLETTER",
+        "placeholder": "WPISZ SWÓJ EMAIL"
+      },
+      "copyright": "© 2026 TATRAGRAIL. WSZELKIE PRAWA ZASTRZEŻONE."
+    }
+  }
+}
