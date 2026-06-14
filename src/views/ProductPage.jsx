@@ -174,7 +174,9 @@ export default function ProductPage({ product }) {
           <div className="mb-8">
             <div className="flex justify-between items-center mb-3">
               <span className="text-xs font-bold tracking-widest uppercase">{t('pdp.size')}: <span className="text-gray-500">{selectedSize || ''}</span></span>
-              <a href="#" className="text-xs font-bold tracking-widest underline text-gray-500 hover:text-black">{t('pdp.size_guide')}</a>
+              <button type="button" className="text-xs font-bold tracking-widest underline text-gray-500 transition-colors hover:text-black">
+                {t('pdp.size_guide')}
+              </button>
             </div>
             <div className="grid grid-cols-5 gap-2">
               {sizes.map(size => (

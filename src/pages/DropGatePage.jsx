@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { apiJson } from '../lib/api'
 
 const brandLogoUrl = new URL('../../tatragraillogo.png', import.meta.url).href
 
@@ -39,17 +40,7 @@ export default function DropGatePage({ dropStartAt, onUnlocked }) {
     setError('')
     setLoading(true)
     try {
-      const res = await fetch('http://localhost:3000/api/drop/unlock', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password })
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        setError(data?.error || 'Unlock failed')
-        setLoading(false)
-        return
-      }
+      const data = await apiJson('/api/drop/unlock', 'POST', { password })
 
       if (data?.token) {
         localStorage.setItem('tatragrail-drop-token', data.token)
@@ -57,7 +48,7 @@ export default function DropGatePage({ dropStartAt, onUnlocked }) {
 
       onUnlocked?.()
     } catch (err) {
-      setError('Network error')
+      setError(err.message || 'Network error')
     } finally {
       setLoading(false)
     }
@@ -118,4 +109,3 @@ export default function DropGatePage({ dropStartAt, onUnlocked }) {
     </div>
   )
 }
-

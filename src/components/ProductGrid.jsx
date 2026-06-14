@@ -6,10 +6,10 @@ import { categoriesData } from '../data/products'
 import ProductCard from './ProductCard'
 import { useViewContext } from '../context/ViewContext'
 
-export default function ProductGrid() {
+export default function ProductGrid({ categories = categoriesData }) {
   const { i18n } = useTranslation();
   const { gridView } = useViewContext();
-  const visibleCategories = categoriesData.filter((c) => c.id !== 'drop01')
+  const visibleCategories = categories.filter((c) => c.id !== 'drop01')
 
   return (
     <section id="katalog" className="relative w-full bg-[#0a0a0a] text-white overflow-hidden m-0 p-0">
@@ -31,10 +31,8 @@ export default function ProductGrid() {
 
             {/* Grid */}
             <div className="max-w-[1800px] mx-auto px-fluid-sm">
-              <div className={`grid gap-x-fluid-sm gap-y-fluid-md ${
-                gridView === 'minimal' 
-                  ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6' // Gęsta siatka dla widoku minimalnego
-                  : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' // Duża siatka z tekstem
+              <div className={`grid grid-cols-2 gap-x-3 gap-y-5 sm:gap-x-fluid-sm sm:gap-y-fluid-md lg:grid-cols-4 ${
+                gridView === 'minimal' ? 'xl:gap-x-5' : ''
               }`}>
                 {category.products.map(product => (
                   <ProductCard key={product.id} product={product} />

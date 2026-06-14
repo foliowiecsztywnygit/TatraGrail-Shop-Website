@@ -24,7 +24,7 @@ const PaymentIcons = () => (
   </div>
 )
 
-export default function ProductPage({ product }) {
+export default function ProductPage({ product, allProducts: allProductsProp = null }) {
   const { t, i18n } = useTranslation();
   const addItem = useCartStore(state => state.addItem);
   const openCart = useCartStore(state => state.openCart);
@@ -47,7 +47,7 @@ export default function ProductPage({ product }) {
   const [openAccordion, setOpenAccordion] = useState('details');
 
   const sizes = product.sizes || ['S', 'M', 'L', 'XL', 'XXL'];
-  const allProducts = categoriesData.flatMap(cat => cat.products);
+  const allProducts = allProductsProp || categoriesData.flatMap(cat => cat.products);
 
   const handleBundleOptionChange = (option) => {
     setBundleOption(option);
@@ -85,7 +85,7 @@ export default function ProductPage({ product }) {
   };
 
   // Dynamiczne ceny
-  const basePriceNum = parseFloat(product.price.replace(' PLN', ''));
+  const basePriceNum = product.salePriceValue ?? product.priceValue ?? parseFloat(String(product.salePrice || product.price).replace(' PLN', ''));
   let finalPrice = basePriceNum;
   if (bundleOption === 2) finalPrice = (basePriceNum * 2) * 0.9;
   if (bundleOption === 3) finalPrice = (basePriceNum * 3); // 4 szt w cenie 3
@@ -140,7 +140,7 @@ export default function ProductPage({ product }) {
           <div className="sticky top-[160px] w-full aspect-[3/4] bg-[#f5f5f5] flex items-center justify-center p-8 group">
             <img 
               src={product.images[imgIndex]} 
-              alt={product.title} 
+              alt={product.title[i18n.language]} 
               className="w-full h-full object-contain"
             />
             
@@ -170,17 +170,15 @@ export default function ProductPage({ product }) {
           <h1 className="text-3xl md:text-5xl font-montserrat font-black uppercase tracking-wide mb-4">
             {product.title[i18n.language]}
           </h1>
-          <p className="text-xl md:text-2xl font-bold mb-8">{product.price}</p>
+          <div className="mb-8 flex items-center gap-3">
+            <p className="text-xl md:text-2xl font-bold">{product.salePrice || product.price}</p>
+            {product.salePrice && <p className="text-sm text-gray-400 line-through">{product.price}</p>}
+            {product.discountPercent ? <span className="border border-black px-2 py-1 text-[10px] font-bold uppercase tracking-[0.2em]">-{product.discountPercent}%</span> : null}
+          </div>
 
-          {/* Social Proof */}
-          <div className="flex items-center space-x-3 mb-8 bg-gray-50 p-3 border border-gray-200">
-            <div className="flex -space-x-2">
-              <div className="w-6 h-6 rounded-full bg-gray-300 border border-white"></div>
-              <div className="w-6 h-6 rounded-full bg-gray-400 border border-white"></div>
-              <div className="w-6 h-6 rounded-full bg-gray-800 border border-white"></div>
-            </div>
-            <span className="text-xs font-bold tracking-widest text-gray-600">
-              {t('pdp.social_proof', { count: Math.floor(Math.random() * 50) + 12 })}
+          <div className="mb-8 border border-black bg-black px-4 py-3">
+            <span className="text-xs font-bold tracking-[0.22em] text-white uppercase">
+              {t('pdp.urgency_cta')}
             </span>
           </div>
 
@@ -206,7 +204,9 @@ export default function ProductPage({ product }) {
           <div className="mb-8">
             <div className="flex justify-between items-center mb-3">
               <span className="text-xs font-bold tracking-widest uppercase">{t('pdp.size')}: <span className="text-gray-500">{selectedSize || ''}</span></span>
-              <a href="#" className="text-xs font-bold tracking-widest underline text-gray-500 hover:text-black">{t('pdp.size_guide')}</a>
+              <button type="button" className="text-xs font-bold tracking-widest underline text-gray-500 transition-colors hover:text-black">
+                {t('pdp.size_guide')}
+              </button>
             </div>
             <div className="grid grid-cols-5 gap-2">
               {sizes.map(size => (
@@ -219,7 +219,7 @@ export default function ProductPage({ product }) {
                 </button>
               ))}
             </div>
-            {selectedSize === 'S' && <p className="text-red-500 text-xs font-bold tracking-widest mt-2">{t('pdp.low_stock')}</p>}
+            {product.stock <= 3 && <p className="text-red-500 text-xs font-bold tracking-widest mt-2">{t('pdp.low_stock')}</p>}
           </div>
 
           {/* Upsell / Bundles Section z wyborem sub-wariantów */}
@@ -397,10 +397,10 @@ export default function ProductPage({ product }) {
           <div className="sticky bottom-0 left-0 w-full md:relative bg-white md:bg-transparent p-4 md:p-0 border-t md:border-t-0 border-gray-200 z-50 mb-8">
             <button 
               onClick={handleAddToCart}
-              className={`w-full py-5 text-sm font-bold tracking-widest uppercase transition-all ${selectedSize ? 'bg-black text-white hover:bg-gray-800' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}
-              disabled={!selectedSize}
+              className={`w-full py-5 text-sm font-bold tracking-widest uppercase transition-all ${selectedSize && product.status === 'available' ? 'bg-black text-white hover:bg-gray-800' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}
+              disabled={!selectedSize || product.status !== 'available'}
             >
-              {selectedSize ? `${t('pdp.add_to_cart')} - ${formattedPrice}` : t('pdp.select_options')}
+              {product.status !== 'available' ? 'Produkt chwilowo niedostepny' : selectedSize ? `${t('pdp.add_to_cart')} - ${formattedPrice}` : t('pdp.select_options')}
             </button>
             <div className="hidden md:flex justify-center mt-4">
               <PaymentIcons />

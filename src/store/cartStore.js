@@ -33,6 +33,17 @@ export const useCartStore = create(
             : item
         )
       })),
+      syncPrices: (products = []) => set((state) => {
+        const productMap = new Map(products.map((product) => [product.id, product]));
+        return {
+          items: state.items.map((item) => {
+            const product = productMap.get(item.productId);
+            if (!product) return item;
+            const nextUnitPrice = Number(product.salePriceValue ?? product.priceValue);
+            return Number.isFinite(nextUnitPrice) ? { ...item, unitPrice: nextUnitPrice } : item;
+          })
+        };
+      }),
       clearCart: () => set({ items: [] }),
       getSubtotal: () => {
         const { items } = get();

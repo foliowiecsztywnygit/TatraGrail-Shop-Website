@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useStripe, Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import { useCartStore } from '../store/cartStore';
+import { navigateTo } from '../lib/navigation';
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 'pk_test_mock');
 
@@ -39,7 +40,7 @@ function PaymentStatusContent() {
           
           if (trackingToken) {
             setTimeout(() => {
-              window.location.href = `/tracking/${trackingToken}`;
+              navigateTo(`/tracking/${trackingToken}`);
             }, 3000);
           }
           break;
@@ -75,7 +76,7 @@ function PaymentStatusContent() {
 
         {status === 'error' && (
           <button 
-            onClick={() => window.location.href = '/checkout'}
+            onClick={() => navigateTo('/checkout')}
             className="w-full bg-white text-black py-3 font-bold uppercase tracking-widest hover:bg-gray-200 transition-colors rounded-sm"
           >
             Wróć do Kasy

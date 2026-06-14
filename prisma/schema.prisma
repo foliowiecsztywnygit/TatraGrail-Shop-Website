@@ -3,6 +3,7 @@
 
 generator client {
   provider = "prisma-client-js"
+  output   = "../generated/prisma-client"
 }
 
 datasource db {
@@ -14,6 +15,8 @@ model Order {
   id               String      @id @default(uuid())
   orderNumber      String      @unique // e.g. TG-2026-000123
   email            String
+  phone            String?
+  checkoutMode     String      @default("standard")
   firstName        String
   lastName         String
   country          String
@@ -46,6 +49,15 @@ model Order {
   trackingNumber   String?     // Numer śledzenia paczki
   shipmentStatus   String?     // Status z API InPost
   labelUrl         String?     // Link do etykiety
+  courierCompany   String      @default("inpost")
+  packageWeight    Float?
+  packageLength    Float?
+  packageWidth     Float?
+  packageHeight    Float?
+  goodsValue       Float?
+  orderNotes       String?
+  adminNotes       String?
+  needsAttention   Boolean     @default(false)
   
   trackingToken    String      @unique @default(uuid())
 
@@ -85,4 +97,120 @@ model PromoCode {
   collectionScope String?
   minimumCartValue Float?
   partnerId      String?
+}
+
+model Product {
+  id                  String           @id @default(uuid())
+  externalId          String?          @unique
+  name                String
+  nameEn              String?
+  slug                String           @unique
+  sku                 String           @unique
+  category            String
+  categoryLabel       String?
+  categoryLabelEn     String?
+  shortDescription    String
+  shortDescriptionEn  String?
+  description         String
+  descriptionEn       String?
+  material            String?
+  materialEn          String?
+  details             String?
+  detailsEn           String?
+  price               Float
+  salePrice           Float?
+  currency            String           @default("PLN")
+  vatRate             Float            @default(23)
+  stock               Int              @default(0)
+  weight              Float?
+  width               Float?
+  height              Float?
+  depth               Float?
+  status              String           @default("available")
+  isArchived          Boolean          @default(false)
+  deletedAt           DateTime?
+  featured            Boolean          @default(false)
+  dropFeatured        Boolean          @default(false)
+  colors              String?
+  sizes               String?
+  seoTitle            String?
+  metaDescription     String?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  images              ProductImage[]
+  history             ProductHistory[]
+}
+
+model ProductImage {
+  id           String   @id @default(uuid())
+  productId    String
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url          String
+  alt          String?
+  position     Int      @default(0)
+  isThumbnail  Boolean  @default(false)
+  createdAt    DateTime @default(now())
+}
+
+model ProductHistory {
+  id          String   @id @default(uuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  author      String
+  action      String
+  snapshot    String
+  createdAt   DateTime @default(now())
+}
+
+model CmsPage {
+  id               String           @id @default(uuid())
+  key              String           @unique
+  title            String
+  slug             String           @unique
+  seoTitle         String?
+  metaDescription  String?
+  bodyHtml         String
+  customData       String?
+  isArchived       Boolean          @default(false)
+  currentVersion   Int              @default(1)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  versions         CmsPageVersion[]
+}
+
+model CmsPageVersion {
+  id               String   @id @default(uuid())
+  pageId           String
+  page             CmsPage  @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  version          Int
+  title            String
+  slug             String
+  seoTitle         String?
+  metaDescription  String?
+  bodyHtml         String
+  customData       String?
+  author           String
+  createdAt        DateTime @default(now())
+
+  @@unique([pageId, version])
+}
+
+model ContactSubmission {
+  id         String   @id @default(uuid())
+  name       String
+  email      String
+  phone      String?
+  message    String
+  createdAt  DateTime @default(now())
+}
+
+model ReturnRequest {
+  id           String   @id @default(uuid())
+  orderNumber  String
+  fullName     String
+  email        String
+  reason       String
+  details      String?
+  status       String   @default("new")
+  createdAt    DateTime @default(now())
 }

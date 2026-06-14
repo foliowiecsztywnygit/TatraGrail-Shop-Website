@@ -5,7 +5,9 @@
       "home": "HOME",
       "originals": "TATRAGRAIL COLLECTION",
       "mokasynek": "MOKASYNEK",
-      "drop": "DROP"
+      "drop": "DROP 01",
+      "shipping": "SHIPPING & RETURNS",
+      "contact": "CONTACT"
     },
     "hero": {
       "title_1": "FOR LORDS AND",
@@ -15,6 +17,7 @@
     },
     "pdp": {
       "social_proof": "{{count}} PEOPLE BOUGHT THIS ITEM THIS WEEK",
+      "urgency_cta": "LOW STOCK, BUY NOW",
       "color": "COLOR",
       "size": "SIZE",
       "size_guide": "SIZE GUIDE",

@@ -6,6 +6,7 @@ import { MapPin, Truck, Check, Search } from 'lucide-react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 import StripePaymentForm from '../components/StripePaymentForm';
+import { apiJson } from '../lib/api';
 
 // Inicjalizacja Stripe (klucz publiczny)
 // Używamy zmiennej środowiskowej lub mocka
@@ -24,17 +25,21 @@ export default function CheckoutPage() {
     }
   };
 
+  const savedCheckoutData = loadSavedData();
+  const [checkoutMode, setCheckoutMode] = useState(savedCheckoutData.checkoutMode === 'quick' ? 'quick' : 'standard');
+
   const { register, handleSubmit, watch, formState: { errors } } = useForm({
-    defaultValues: loadSavedData()
+    defaultValues: savedCheckoutData,
+    shouldUnregister: true
   });
 
   // Zapisywanie do localStorage przy każdej zmianie
   useEffect(() => {
     const subscription = watch((value) => {
-      localStorage.setItem('tatragrailCheckoutData', JSON.stringify(value));
+      localStorage.setItem('tatragrailCheckoutData', JSON.stringify({ ...value, checkoutMode }));
     });
     return () => subscription.unsubscribe();
-  }, [watch]);
+  }, [watch, checkoutMode]);
 
   const [promoCode, setPromoCode] = useState('');
   const [discount, setDiscount] = useState(0);
@@ -172,24 +177,14 @@ export default function CheckoutPage() {
     if (!promoCode) return;
     
     try {
-      const res = await fetch('http://localhost:3000/api/discount/validate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: promoCode, cartTotal: subtotal })
-      });
-      const data = await res.json();
-      
-      if (res.ok) {
-        if (data.promo.type === 'percentage') {
-          setDiscount(subtotal * (data.promo.value / 100));
-        } else {
-          setDiscount(data.promo.value);
-        }
+      const data = await apiJson('/api/discount/validate', 'POST', { code: promoCode, cartTotal: subtotal });
+      if (data.promo.type === 'percentage') {
+        setDiscount(subtotal * (data.promo.value / 100));
       } else {
-        setPromoError(data.error);
+        setDiscount(data.promo.value);
       }
     } catch (err) {
-      setPromoError('Błąd połączenia');
+      setPromoError(err.message || 'Blad polaczenia');
     }
   };
 
@@ -201,40 +196,43 @@ export default function CheckoutPage() {
 
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:3000/api/create-payment-intent', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'x-drop-token': localStorage.getItem('tatragrail-drop-token') || ''
+      const responseData = await apiJson('/api/create-payment-intent', 'POST', {
+        cart: items,
+        customer: {
+          ...data,
+          checkoutMode
         },
-        body: JSON.stringify({
-          cart: items,
-          customer: data,
-          promoCode: discount > 0 ? promoCode : null,
-          delivery: {
-            method: deliveryMethod === 'locker' ? 'inpost_locker' : 'inpost_courier',
-            point: deliveryMethod === 'locker' ? inpostPoint : null
-          }
-        })
-      });
-      const responseData = await res.json();
-      
-      if (res.ok && responseData.clientSecret) {
-        if (responseData.clientSecret === 'mock_secret_client') {
-          // Fallback dla lokalnego mocka, gdy nie mamy kluczy Stripe
-          window.location.href = responseData.mockUrl;
-        } else {
-          setClientSecret(responseData.clientSecret);
-          setTrackingToken(responseData.trackingToken);
+        promoCode: discount > 0 ? promoCode : null,
+        delivery: {
+          method: deliveryMethod === 'locker' ? 'inpost_locker' : 'inpost_courier',
+          point: deliveryMethod === 'locker' ? inpostPoint : null
         }
+      }, {
+        headers: {
+          'x-drop-token': localStorage.getItem('tatragrail-drop-token') || ''
+        }
+      });
+      
+      if (responseData.clientSecret === 'mock_secret_client') {
+        window.location.href = responseData.mockUrl;
       } else {
-        alert('Błąd płatności: ' + (responseData.error || 'Nieznany błąd'));
+        setClientSecret(responseData.clientSecret);
+        setTrackingToken(responseData.trackingToken);
       }
     } catch (err) {
-      alert('Błąd połączenia z serwerem');
+      alert(`Blad platnosci: ${err.message || 'Nieznany blad'}`);
     } finally {
       setLoading(false);
     }
+  };
+
+  const enableQuickCheckout = () => {
+    setCheckoutMode('quick');
+    setDeliveryMethod('locker');
+  };
+
+  const enableStandardCheckout = () => {
+    setCheckoutMode('standard');
   };
 
   if (items.length === 0) {
@@ -301,138 +299,190 @@ export default function CheckoutPage() {
             </div>
           ) : (
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              
               <div className="space-y-4">
+                <h2 className="text-xl font-bold font-montserrat uppercase tracking-wider">Tryb zamówienia</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <button
+                    type="button"
+                    onClick={enableStandardCheckout}
+                    className={`border p-4 text-left rounded-sm transition-colors ${checkoutMode === 'standard' ? 'border-white bg-[#1a1a1a]' : 'border-[#333] bg-[#111] hover:border-gray-500'}`}
+                  >
+                    <span className="block text-sm font-bold uppercase tracking-widest">Standardowy checkout</span>
+                    <span className="mt-2 block text-xs text-gray-400">Pelne dane dostawy, kurier lub paczkomat.</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={enableQuickCheckout}
+                    className={`border p-4 text-left rounded-sm transition-colors ${checkoutMode === 'quick' ? 'border-white bg-[#1a1a1a]' : 'border-[#333] bg-[#111] hover:border-gray-500'}`}
+                  >
+                    <span className="block text-sm font-bold uppercase tracking-widest">Szybki checkout</span>
+                    <span className="mt-2 block text-xs text-gray-400">Tylko email, telefon i paczkomat InPost.</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-6 border-t border-[#222]">
                 <h2 className="text-xl font-bold font-montserrat uppercase tracking-wider">Dane kontaktowe</h2>
-              <div>
-                <input 
-                  {...register('email', { required: 'Email jest wymagany', pattern: /^\S+@\S+$/i })} 
-                  placeholder="Email *" 
-                  className="w-full bg-[#111] border border-[#333] p-3 rounded-sm focus:outline-none focus:border-white transition-colors"
-                />
-                {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
-              </div>
-            </div>
-
-            <div className="space-y-4 pt-6 border-t border-[#222]">
-              <h2 className="text-xl font-bold font-montserrat uppercase tracking-wider">Adres dostawy</h2>
-              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <input 
-                    {...register('firstName', { required: 'Imię jest wymagane' })} 
-                    placeholder="Imię *" 
+                  <input
+                    {...register('email', { required: 'Email jest wymagany', pattern: { value: /^\S+@\S+\.\S+$/i, message: 'Podaj poprawny email' } })}
+                    placeholder="Email *"
                     className="w-full bg-[#111] border border-[#333] p-3 rounded-sm focus:outline-none focus:border-white transition-colors"
                   />
-                  {errors.firstName && <p className="text-red-500 text-xs mt-1">{errors.firstName.message}</p>}
+                  {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
                 </div>
                 <div>
-                  <input 
-                    {...register('lastName', { required: 'Nazwisko jest wymagane' })} 
-                    placeholder="Nazwisko *" 
+                  <input
+                    {...register('phone', checkoutMode === 'quick' ? { required: 'Telefon jest wymagany', minLength: { value: 9, message: 'Podaj poprawny numer telefonu' } } : {})}
+                    placeholder={checkoutMode === 'quick' ? 'Telefon *' : 'Telefon'}
                     className="w-full bg-[#111] border border-[#333] p-3 rounded-sm focus:outline-none focus:border-white transition-colors"
                   />
-                  {errors.lastName && <p className="text-red-500 text-xs mt-1">{errors.lastName.message}</p>}
-                </div>
-              </div>
-              
-              <div>
-                <input 
-                  {...register('street', { required: 'Ulica jest wymagana' })} 
-                  placeholder="Ulica *" 
-                  className="w-full bg-[#111] border border-[#333] p-3 rounded-sm focus:outline-none focus:border-white transition-colors"
-                />
-                {errors.street && <p className="text-red-500 text-xs mt-1">{errors.street.message}</p>}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <input 
-                    {...register('houseNumber', { required: 'Nr domu/mieszkania wymagany' })} 
-                    placeholder="Nr domu / lokalu *" 
-                    className="w-full bg-[#111] border border-[#333] p-3 rounded-sm focus:outline-none focus:border-white transition-colors"
-                  />
-                  {errors.houseNumber && <p className="text-red-500 text-xs mt-1">{errors.houseNumber.message}</p>}
-                </div>
-                <div>
-                  <input 
-                    {...register('postalCode', { required: 'Kod pocztowy wymagany' })} 
-                    placeholder="Kod pocztowy *" 
-                    className="w-full bg-[#111] border border-[#333] p-3 rounded-sm focus:outline-none focus:border-white transition-colors"
-                  />
-                  {errors.postalCode && <p className="text-red-500 text-xs mt-1">{errors.postalCode.message}</p>}
+                  {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone.message}</p>}
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <input 
-                    {...register('city', { required: 'Miasto jest wymagane' })} 
-                    placeholder="Miasto *" 
-                    className="w-full bg-[#111] border border-[#333] p-3 rounded-sm focus:outline-none focus:border-white transition-colors"
-                  />
-                  {errors.city && <p className="text-red-500 text-xs mt-1">{errors.city.message}</p>}
-                </div>
-                <div>
-                  <input 
-                    {...register('country', { required: 'Kraj jest wymagany' })} 
-                    placeholder="Kraj *" 
-                    defaultValue="Polska"
-                    className="w-full bg-[#111] border border-[#333] p-3 rounded-sm focus:outline-none focus:border-white transition-colors"
-                  />
-                  {errors.country && <p className="text-red-500 text-xs mt-1">{errors.country.message}</p>}
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4 pt-6 border-t border-[#222]">
-              <h2 className="text-xl font-bold font-montserrat uppercase tracking-wider">Firma (Opcjonalnie)</h2>
-              <input {...register('companyName')} placeholder="Nazwa firmy" className="w-full bg-[#111] border border-[#333] p-3 rounded-sm focus:outline-none focus:border-white transition-colors mb-4" />
-              <input {...register('nip')} placeholder="NIP / VAT" className="w-full bg-[#111] border border-[#333] p-3 rounded-sm focus:outline-none focus:border-white transition-colors" />
-            </div>
-
-            <div className="space-y-4 pt-6 border-t border-[#222]">
-              <h2 className="text-xl font-bold font-montserrat uppercase tracking-wider">Metoda dostawy</h2>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <label className={`border p-4 rounded-sm cursor-pointer transition-all flex flex-col items-center justify-center gap-2 ${deliveryMethod === 'courier' ? 'border-white bg-[#1a1a1a]' : 'border-[#333] bg-[#111] hover:border-gray-500'}`}>
-                  <input type="radio" name="delivery" value="courier" className="hidden" checked={deliveryMethod === 'courier'} onChange={() => setDeliveryMethod('courier')} />
-                  <Truck size={24} />
-                  <span className="font-bold uppercase tracking-widest text-sm">Kurier InPost</span>
-                </label>
-                
-                <label className={`border p-4 rounded-sm cursor-pointer transition-all flex flex-col items-center justify-center gap-2 ${deliveryMethod === 'locker' ? 'border-white bg-[#1a1a1a]' : 'border-[#333] bg-[#111] hover:border-gray-500'}`}>
-                  <input type="radio" name="delivery" value="locker" className="hidden" checked={deliveryMethod === 'locker'} onChange={() => setDeliveryMethod('locker')} />
-                  <MapPin size={24} />
-                  <span className="font-bold uppercase tracking-widest text-sm">Paczkomat InPost</span>
-                </label>
-              </div>
-
-              {deliveryMethod === 'locker' && (
-                <div className="mt-4 p-4 border border-dashed border-[#444] bg-[#0a0a0a] rounded-sm">
-                  {inpostPoint ? (
-                    <div className="flex justify-between items-center">
+              {checkoutMode === 'standard' ? (
+                <>
+                  <div className="space-y-4 pt-6 border-t border-[#222]">
+                    <h2 className="text-xl font-bold font-montserrat uppercase tracking-wider">Adres dostawy</h2>
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <p className="font-bold text-green-500 flex items-center gap-2"><Check size={16} /> Wybrano punkt: {inpostPoint.id}</p>
-                        <p className="text-sm text-gray-400 mt-1">{inpostPoint.address}, {inpostPoint.postalCode} {inpostPoint.city}</p>
-                        {inpostPoint.name && <p className="text-xs text-gray-500">{inpostPoint.name}</p>}
+                        <input
+                          {...register('firstName', { required: 'Imię jest wymagane' })}
+                          placeholder="Imię *"
+                          className="w-full bg-[#111] border border-[#333] p-3 rounded-sm focus:outline-none focus:border-white transition-colors"
+                        />
+                        {errors.firstName && <p className="text-red-500 text-xs mt-1">{errors.firstName.message}</p>}
                       </div>
-                      <button type="button" onClick={() => setShowGeowidget(true)} className="text-xs underline uppercase font-bold text-gray-400 hover:text-white">Zmień</button>
+                      <div>
+                        <input
+                          {...register('lastName', { required: 'Nazwisko jest wymagane' })}
+                          placeholder="Nazwisko *"
+                          className="w-full bg-[#111] border border-[#333] p-3 rounded-sm focus:outline-none focus:border-white transition-colors"
+                        />
+                        {errors.lastName && <p className="text-red-500 text-xs mt-1">{errors.lastName.message}</p>}
+                      </div>
                     </div>
-                  ) : (
-                    <button type="button" onClick={() => setShowGeowidget(true)} className="w-full bg-white text-black py-3 font-bold uppercase tracking-widest text-sm hover:bg-gray-200 transition-colors">
-                      Wybierz paczkomat z mapy
-                    </button>
-                  )}
+
+                    <div>
+                      <input
+                        {...register('street', { required: 'Ulica jest wymagana' })}
+                        placeholder="Ulica *"
+                        className="w-full bg-[#111] border border-[#333] p-3 rounded-sm focus:outline-none focus:border-white transition-colors"
+                      />
+                      {errors.street && <p className="text-red-500 text-xs mt-1">{errors.street.message}</p>}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <input
+                          {...register('houseNumber', { required: 'Nr domu/mieszkania wymagany' })}
+                          placeholder="Nr domu / lokalu *"
+                          className="w-full bg-[#111] border border-[#333] p-3 rounded-sm focus:outline-none focus:border-white transition-colors"
+                        />
+                        {errors.houseNumber && <p className="text-red-500 text-xs mt-1">{errors.houseNumber.message}</p>}
+                      </div>
+                      <div>
+                        <input
+                          {...register('postalCode', { required: 'Kod pocztowy wymagany' })}
+                          placeholder="Kod pocztowy *"
+                          className="w-full bg-[#111] border border-[#333] p-3 rounded-sm focus:outline-none focus:border-white transition-colors"
+                        />
+                        {errors.postalCode && <p className="text-red-500 text-xs mt-1">{errors.postalCode.message}</p>}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <input
+                          {...register('city', { required: 'Miasto jest wymagane' })}
+                          placeholder="Miasto *"
+                          className="w-full bg-[#111] border border-[#333] p-3 rounded-sm focus:outline-none focus:border-white transition-colors"
+                        />
+                        {errors.city && <p className="text-red-500 text-xs mt-1">{errors.city.message}</p>}
+                      </div>
+                      <div>
+                        <input
+                          {...register('country', { required: 'Kraj jest wymagany' })}
+                          placeholder="Kraj *"
+                          defaultValue="Polska"
+                          className="w-full bg-[#111] border border-[#333] p-3 rounded-sm focus:outline-none focus:border-white transition-colors"
+                        />
+                        {errors.country && <p className="text-red-500 text-xs mt-1">{errors.country.message}</p>}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 pt-6 border-t border-[#222]">
+                    <h2 className="text-xl font-bold font-montserrat uppercase tracking-wider">Firma (Opcjonalnie)</h2>
+                    <input {...register('companyName')} placeholder="Nazwa firmy" className="w-full bg-[#111] border border-[#333] p-3 rounded-sm focus:outline-none focus:border-white transition-colors mb-4" />
+                    <input {...register('nip')} placeholder="NIP / VAT" className="w-full bg-[#111] border border-[#333] p-3 rounded-sm focus:outline-none focus:border-white transition-colors" />
+                  </div>
+                </>
+              ) : (
+                <div className="pt-6 border-t border-[#222]">
+                  <div className="border border-[#333] bg-[#111] p-4 rounded-sm text-sm text-gray-300">
+                    Szybki checkout zapisze zamowienie na podstawie emaila, telefonu i wybranego paczkomatu.
+                  </div>
                 </div>
               )}
-            </div>
 
-            <button 
-                type="submit" 
+              <div className="space-y-4 pt-6 border-t border-[#222]">
+                <h2 className="text-xl font-bold font-montserrat uppercase tracking-wider">Metoda dostawy</h2>
+
+                {checkoutMode === 'standard' ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <label className={`border p-4 rounded-sm cursor-pointer transition-all flex flex-col items-center justify-center gap-2 ${deliveryMethod === 'courier' ? 'border-white bg-[#1a1a1a]' : 'border-[#333] bg-[#111] hover:border-gray-500'}`}>
+                      <input type="radio" name="delivery" value="courier" className="hidden" checked={deliveryMethod === 'courier'} onChange={() => setDeliveryMethod('courier')} />
+                      <Truck size={24} />
+                      <span className="font-bold uppercase tracking-widest text-sm">Kurier InPost</span>
+                    </label>
+
+                    <label className={`border p-4 rounded-sm cursor-pointer transition-all flex flex-col items-center justify-center gap-2 ${deliveryMethod === 'locker' ? 'border-white bg-[#1a1a1a]' : 'border-[#333] bg-[#111] hover:border-gray-500'}`}>
+                      <input type="radio" name="delivery" value="locker" className="hidden" checked={deliveryMethod === 'locker'} onChange={() => setDeliveryMethod('locker')} />
+                      <MapPin size={24} />
+                      <span className="font-bold uppercase tracking-widest text-sm">Paczkomat InPost</span>
+                    </label>
+                  </div>
+                ) : (
+                  <div className="border border-white bg-[#1a1a1a] p-4 rounded-sm flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <MapPin size={22} />
+                      <div>
+                        <p className="font-bold uppercase tracking-widest text-sm">Paczkomat InPost</p>
+                        <p className="text-xs text-gray-400">Jedyna metoda dostawy w szybkim checkoutcie.</p>
+                      </div>
+                    </div>
+                    <span className="text-xs uppercase tracking-widest text-white">Aktywne</span>
+                  </div>
+                )}
+
+                {deliveryMethod === 'locker' && (
+                  <div className="mt-4 p-4 border border-dashed border-[#444] bg-[#0a0a0a] rounded-sm">
+                    {inpostPoint ? (
+                      <div className="flex justify-between items-center gap-4">
+                        <div>
+                          <p className="font-bold text-green-500 flex items-center gap-2"><Check size={16} /> Wybrano punkt: {inpostPoint.id}</p>
+                          <p className="text-sm text-gray-400 mt-1">{inpostPoint.address}, {inpostPoint.postalCode} {inpostPoint.city}</p>
+                          {inpostPoint.name && <p className="text-xs text-gray-500">{inpostPoint.name}</p>}
+                        </div>
+                        <button type="button" onClick={() => setShowGeowidget(true)} className="text-xs underline uppercase font-bold text-gray-400 hover:text-white">Zmień</button>
+                      </div>
+                    ) : (
+                      <button type="button" onClick={() => setShowGeowidget(true)} className="w-full bg-white text-black py-3 font-bold uppercase tracking-widest text-sm hover:bg-gray-200 transition-colors">
+                        Wybierz paczkomat z mapy
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <button
+                type="submit"
                 disabled={loading}
                 className="w-full mt-8 bg-white text-black py-4 font-montserrat font-black uppercase tracking-widest hover:bg-gray-200 transition-colors rounded-sm disabled:opacity-50"
               >
-                {loading ? 'Przetwarzanie...' : 'Przejdź do płatności'}
+                {loading ? 'Przetwarzanie...' : checkoutMode === 'quick' ? 'Przejdź do płatności - szybki checkout' : 'Przejdź do płatności'}
               </button>
             </form>
           )}

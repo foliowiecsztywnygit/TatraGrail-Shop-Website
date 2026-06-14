@@ -5,7 +5,9 @@
       "home": "HOME",
       "originals": "KOLEKCJA TATRAGRAIL",
       "mokasynek": "MOKASYNEK",
-      "drop": "DROP"
+      "drop": "DROP 01",
+      "shipping": "WYSYLKA I ZWROTY",
+      "contact": "KONTAKT"
     },
     "hero": {
       "title_1": "DLO PANECKÓW I",
@@ -15,6 +17,7 @@
     },
     "pdp": {
       "social_proof": "{{count}} OSÓB KUPIŁO TEN PRODUKT W TYM TYGODNIU",
+      "urgency_cta": "ZOSTAŁO MAŁO, KUP TERAZ",
       "color": "KOLOR",
       "size": "ROZMIAR",
       "size_guide": "TABELA ROZMIARÓW",

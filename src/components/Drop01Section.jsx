@@ -6,11 +6,11 @@ import { categoriesData } from '../data/products'
 import ProductCard from './ProductCard'
 import { useViewContext } from '../context/ViewContext'
 
-export default function Drop01Section() {
+export default function Drop01Section({ categories = categoriesData }) {
   const { i18n } = useTranslation()
   const { gridView } = useViewContext()
 
-  const drop = categoriesData.find((c) => c.id === 'drop01')
+  const drop = categories.find((c) => c.id === 'drop01')
   if (!drop) return null
 
   return (
@@ -27,12 +27,10 @@ export default function Drop01Section() {
         </div>
 
         <div className="max-w-[1800px] mx-auto px-fluid-sm">
-          <div className={`grid gap-x-fluid-sm gap-y-fluid-md ${
-            gridView === 'minimal' 
-              ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3'
-              : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+          <div className={`grid grid-cols-2 gap-x-3 gap-y-5 sm:gap-x-fluid-sm sm:gap-y-fluid-md lg:grid-cols-4 ${
+            gridView === 'minimal' ? 'xl:gap-x-5' : ''
           }`}>
-            {drop.products.slice(0, 3).map((product) => (
+            {drop.products.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
           </div>
@@ -41,4 +39,3 @@ export default function Drop01Section() {
     </section>
   )
 }
-

@@ -30,10 +30,10 @@ export default function Footer() {
         <div>
           <h3 className="text-fluid-xs font-bold tracking-widest mb-fluid-sm text-gray-200">{t('footer.info_title')}</h3>
           <ul className="space-y-4 text-fluid-xs text-gray-400 tracking-widest">
-            <li><a href="#" className="metal-text-hover">{t('footer.links.shipping')}</a></li>
-            <li><a href="#" className="metal-text-hover">{t('footer.links.terms')}</a></li>
-            <li><a href="#" className="metal-text-hover">{t('footer.links.privacy')}</a></li>
-            <li><a href="#" className="metal-text-hover">{t('footer.links.contact')}</a></li>
+            <li><a href="/shipping-returns" className="metal-text-hover">{t('footer.links.shipping')}</a></li>
+            <li><a href="/terms" className="metal-text-hover">{t('footer.links.terms')}</a></li>
+            <li><a href="/privacy-policy" className="metal-text-hover">{t('footer.links.privacy')}</a></li>
+            <li><a href="/contact" className="metal-text-hover">{t('footer.links.contact')}</a></li>
           </ul>
         </div>
 
@@ -58,10 +58,9 @@ export default function Footer() {
       {/* Copyright */}
       <div className="relative z-10 max-w-[1800px] mx-auto flex flex-col md:flex-row justify-between items-center text-[clamp(8px,1vw,10px)] text-gray-500 tracking-widest border-t border-[#333] pt-fluid-sm">
         <p>{t('footer.copyright')}</p>
-        <div className="flex space-x-6 mt-4 md:mt-0">
-          <a href="#" className="metal-text-hover">INSTAGRAM</a>
-          <a href="#" className="metal-text-hover">TIKTOK</a>
-        </div>
+        <a href="/contact" className="mt-4 text-zinc-400 transition-colors hover:text-white md:mt-0">
+          {t('footer.links.contact')}
+        </a>
       </div>
     </footer>
   )

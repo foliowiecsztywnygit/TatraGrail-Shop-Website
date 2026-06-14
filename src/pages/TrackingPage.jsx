@@ -1,6 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import { CheckCircle, Clock, Truck, Package } from 'lucide-react';
 import { useCartStore } from '../store/cartStore';
+import { apiFetch } from '../lib/api';
+
+const fulfillmentSteps = [
+  { id: 'pending', label: 'Złożone', icon: <Package size={20} /> },
+  { id: 'processing', label: 'W realizacji', icon: <Clock size={20} /> },
+  { id: 'packed', label: 'Spakowane', icon: <Package size={20} /> },
+  { id: 'shipped', label: 'Wysłane', icon: <Truck size={20} /> },
+  { id: 'delivered', label: 'Dostarczone', icon: <CheckCircle size={20} /> }
+];
+
+const shipmentSteps = [
+  { id: 'created', label: 'Przygotowywane', icon: <Package size={20} /> },
+  { id: 'confirmed', label: 'Potwierdzone', icon: <Package size={20} /> },
+  { id: 'sent', label: 'Nadane', icon: <Truck size={20} /> },
+  { id: 'delivered', label: 'Dostarczone', icon: <CheckCircle size={20} /> }
+];
+
+const terminalFulfillmentStatuses = new Set(['canceled', 'returned']);
+const terminalShipmentStatuses = new Set(['returned', 'failed']);
 
 export default function TrackingPage({ token }) {
   const [order, setOrder] = useState(null);
@@ -17,17 +36,20 @@ export default function TrackingPage({ token }) {
 
     const fetchOrder = async () => {
       try {
-        const res = await fetch(`http://localhost:3000/api/order/${token}`);
-        if (!res.ok) throw new Error('Order not found');
-        const data = await res.json();
+        const data = await apiFetch(`/api/order/${token}`);
         setOrder(data);
+        setError('');
       } catch (err) {
         setError(err.message);
       } finally {
         setLoading(false);
       }
     };
+
     fetchOrder();
+    const intervalId = window.setInterval(fetchOrder, 30000);
+
+    return () => window.clearInterval(intervalId);
   }, [token]);
 
   if (loading) {
@@ -38,30 +60,22 @@ export default function TrackingPage({ token }) {
     return <div className="min-h-screen flex items-center justify-center pt-32 text-white text-xl">Nie znaleziono zamówienia</div>;
   }
 
-  const steps = [
-    { id: 'pending', label: 'Złożone', icon: <Package size={20} /> },
-    { id: 'processing', label: 'W realizacji', icon: <Clock size={20} /> },
-    { id: 'shipped', label: 'Wysłane', icon: <Truck size={20} /> },
-    { id: 'delivered', label: 'Dostarczone', icon: <CheckCircle size={20} /> }
-  ];
-
-  const inpostSteps = [
-    { id: 'created', label: 'Przygotowywane', icon: <Package size={20} /> },
-    { id: 'dispatched', label: 'Nadane', icon: <Package size={20} /> },
-    { id: 'in_transit', label: 'W drodze', icon: <Truck size={20} /> },
-    { id: 'ready_to_pickup', label: 'Gotowe do odbioru', icon: <CheckCircle size={20} /> },
-    { id: 'delivered', label: 'Odebrane', icon: <CheckCircle size={20} /> }
-  ];
-
-  // Mapowanie wewnętrznego statusu na status inpost dla wyświetlania
   const isLocker = order.deliveryMethod === 'inpost_locker';
-  let activeSteps = steps;
-  let currentStepIndex = steps.findIndex(s => s.id === order.fulfillmentStatus) || 0;
-
-  if (order.shipmentStatus) {
-    activeSteps = inpostSteps;
-    currentStepIndex = inpostSteps.findIndex(s => s.id === order.shipmentStatus) || 0;
-  }
+  const isQuickCheckout = order.checkoutMode === 'quick';
+  const hasShipmentTimeline = order.shipmentStatus && order.shipmentStatus !== 'unknown' && !terminalShipmentStatuses.has(order.shipmentStatus);
+  const isTerminalFulfillment = terminalFulfillmentStatuses.has(order.fulfillmentStatus);
+  const activeSteps = hasShipmentTimeline ? shipmentSteps : fulfillmentSteps;
+  const currentStatus = hasShipmentTimeline ? order.shipmentStatus : order.fulfillmentStatus;
+  const resolvedStepIndex = activeSteps.findIndex((step) => step.id === currentStatus);
+  const currentStepIndex = resolvedStepIndex >= 0 ? resolvedStepIndex : 0;
+  const progressWidth = activeSteps.length > 1 ? (currentStepIndex / (activeSteps.length - 1)) * 100 : 0;
+  const terminalMessage = order.fulfillmentStatus === 'canceled'
+    ? 'Zamówienie zostało anulowane.'
+    : order.fulfillmentStatus === 'returned' || order.shipmentStatus === 'returned'
+      ? 'Zamówienie zostało zwrócone.'
+      : order.shipmentStatus === 'failed'
+        ? 'Wystąpił problem z przesyłką. Skontaktuj się z obsługą.'
+        : '';
 
   return (
     <div className="min-h-screen pt-32 px-4 md:px-8 bg-[#0a0a0a] text-white pb-20">
@@ -76,12 +90,11 @@ export default function TrackingPage({ token }) {
         {/* Timeline */}
         <div className="relative mb-16">
           <div className="absolute top-1/2 left-0 w-full h-1 bg-[#222] -translate-y-1/2 z-0"></div>
-          <div className="absolute top-1/2 left-0 h-1 bg-white -translate-y-1/2 z-0 transition-all duration-500" style={{ width: `${(currentStepIndex / (activeSteps.length - 1)) * 100}%` }}></div>
+          <div className="absolute top-1/2 left-0 h-1 bg-white -translate-y-1/2 z-0 transition-all duration-500" style={{ width: `${progressWidth}%` }}></div>
           
           <div className="relative z-10 flex justify-between">
             {activeSteps.map((step, index) => {
               const isCompleted = index <= currentStepIndex;
-              const isActive = index === currentStepIndex;
               return (
                 <div key={step.id} className="flex flex-col items-center">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center border-4 transition-colors ${isCompleted ? 'bg-white border-white text-black' : 'bg-[#111] border-[#333] text-gray-500'}`}>
@@ -94,15 +107,27 @@ export default function TrackingPage({ token }) {
           </div>
         </div>
 
+        {isTerminalFulfillment || terminalMessage ? (
+          <div className="mb-10 border border-amber-500/40 bg-amber-950/20 px-4 py-3 text-center text-sm text-amber-100">
+            {terminalMessage}
+          </div>
+        ) : null}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div className="bg-[#111] p-6 border border-[#222] rounded-sm flex flex-col gap-6">
             <div>
-              <h2 className="font-bold uppercase tracking-widest mb-4 border-b border-[#333] pb-2">Dane Odbiorcy</h2>
+              <h2 className="font-bold uppercase tracking-widest mb-4 border-b border-[#333] pb-2">{isQuickCheckout ? 'Dane kontaktowe' : 'Dane odbiorcy'}</h2>
               <div className="text-sm space-y-2 text-gray-300">
-                <p><span className="text-white">Imię i nazwisko:</span> {order.firstName} {order.lastName}</p>
-                <p><span className="text-white">Adres:</span> {order.street} {order.houseNumber}</p>
-                <p><span className="text-white">Kod pocztowy i miasto:</span> {order.postalCode} {order.city}</p>
-                <p><span className="text-white">Kraj:</span> {order.country}</p>
+                <p><span className="text-white">Email:</span> {order.email}</p>
+                {order.phone && <p><span className="text-white">Telefon:</span> {order.phone}</p>}
+                {!isQuickCheckout && (
+                  <>
+                    <p><span className="text-white">Imię i nazwisko:</span> {order.firstName} {order.lastName}</p>
+                    <p><span className="text-white">Adres:</span> {order.street} {order.houseNumber}</p>
+                    <p><span className="text-white">Kod pocztowy i miasto:</span> {order.postalCode} {order.city}</p>
+                    <p><span className="text-white">Kraj:</span> {order.country}</p>
+                  </>
+                )}
                 {order.companyName && <p><span className="text-white">Firma:</span> {order.companyName} (NIP: {order.nip})</p>}
               </div>
             </div>
