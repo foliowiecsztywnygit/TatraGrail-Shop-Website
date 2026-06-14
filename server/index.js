@@ -29,6 +29,8 @@ const projectRoot = path.resolve(__dirname, '..');
 const uploadsDir = path.join(projectRoot, 'public', 'uploads');
 const adminDataDir = path.join(projectRoot, '.data');
 const adminAuthFile = path.join(adminDataDir, 'admin-auth.json');
+const distDir = path.join(projectRoot, 'dist');
+const distIndexFile = path.join(distDir, 'index.html');
 
 const app = express();
 const prisma = new PrismaClient();
@@ -1431,6 +1433,15 @@ app.get('/api/pages/key/:key', async (req, res) => {
   return res.json({ page: serializePage(page) });
 });
 
+const serveBuiltFrontend = async (req, res, next) => {
+  try {
+    await fsPromises.access(distIndexFile);
+    return res.sendFile(distIndexFile);
+  } catch (error) {
+    return next();
+  }
+};
+
 app.post('/api/contact-submissions', async (req, res) => {
   const { name, email, phone, message, website, formStartedAt } = req.body || {};
 
@@ -2052,6 +2063,9 @@ app.get('/api/admin/submissions', requireAdmin, async (req, res) => {
 
   return res.json({ contacts, returns });
 });
+
+app.use(express.static(distDir));
+app.get(/^\/(?!api\/).*/, serveBuiltFrontend);
 
 const serverReady = (async () => {
   await ensureCmsSeedData();
