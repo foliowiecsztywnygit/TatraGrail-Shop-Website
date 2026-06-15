@@ -32,6 +32,11 @@ const adminAuthFile = path.join(adminDataDir, 'admin-auth.json');
 const distDir = path.join(projectRoot, 'dist');
 const distIndexFile = path.join(distDir, 'index.html');
 
+if (!process.env.DATABASE_URL) {
+  const sqliteDbPath = path.join(projectRoot, 'prisma', 'dev.db').replace(/\\/g, '/');
+  process.env.DATABASE_URL = `file:${sqliteDbPath}`;
+}
+
 const app = express();
 const prisma = new PrismaClient();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_mock', {
@@ -157,11 +162,37 @@ const requireAdmin = (req, res, next) => {
 const apiOrigin = (req) => `${req.protocol}://${req.get('host')}`;
 const frontendOrigin = () => process.env.FRONTEND_URL || 'http://localhost:5173';
 
-const toAbsoluteAssetUrl = (req, value) => {
+const normalizeStoredAssetUrl = (value) => {
   if (!value) return value;
-  if (value.startsWith('data:') || value.startsWith('http://') || value.startsWith('https://')) return value;
-  if (value.startsWith('/')) return `${apiOrigin(req)}${value}`;
-  return `${apiOrigin(req)}/${value}`;
+
+  const normalized = String(value).trim().replace(/\\/g, '/');
+  if (!normalized || normalized.startsWith('data:')) return normalized;
+
+  try {
+    const parsed = new URL(normalized);
+    if (parsed.pathname.startsWith('/uploads/')) {
+      return parsed.pathname;
+    }
+    return normalized;
+  } catch (error) {
+    // Not an absolute URL, continue with path normalization.
+  }
+
+  const uploadsSegmentIndex = normalized.toLowerCase().lastIndexOf('/uploads/');
+  if (uploadsSegmentIndex >= 0) {
+    return normalized.slice(uploadsSegmentIndex);
+  }
+
+  if (normalized.startsWith('uploads/')) return `/${normalized}`;
+  return normalized;
+};
+
+const toAbsoluteAssetUrl = (req, value) => {
+  const normalized = normalizeStoredAssetUrl(value);
+  if (!normalized) return normalized;
+  if (normalized.startsWith('data:') || normalized.startsWith('http://') || normalized.startsWith('https://')) return normalized;
+  if (normalized.startsWith('/')) return `${apiOrigin(req)}${normalized}`;
+  return `${apiOrigin(req)}/${normalized}`;
 };
 
 const parseJsonArray = (value, fallback = []) => {
@@ -386,7 +417,7 @@ const buildProductInput = (body, existingProduct = null) => {
   const images = Array.isArray(body.images)
     ? body.images
         .map((image, index) => ({
-          url: image?.url || '',
+          url: normalizeStoredAssetUrl(image?.url || ''),
           alt: image?.alt || '',
           position: Number.isFinite(Number(image?.position)) ? Number(image.position) : index,
           isThumbnail: Boolean(image?.isThumbnail) || index === 0
@@ -1945,7 +1976,7 @@ app.post('/api/admin/upload', requireAdmin, upload.array('files', 10), async (re
   const files = Array.isArray(req.files) ? req.files : [];
   return res.json({
     files: files.map((file, index) => ({
-      url: `${apiOrigin(req)}/uploads/${file.filename}`,
+      url: `/uploads/${file.filename}`,
       alt: file.originalname,
       position: index,
       isThumbnail: index === 0
