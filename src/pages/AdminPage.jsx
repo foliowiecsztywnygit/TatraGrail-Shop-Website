@@ -1252,15 +1252,32 @@ export default function AdminPage() {
             <section className="border border-zinc-800 bg-black/70 p-6">
               <SectionTitle icon={Database} title="Zarządzanie Bazą Danych (Kopie Zapasowe)" />
               <div className="flex flex-col xl:flex-row items-start xl:items-center gap-6 mt-4">
-                <a
-                  href="/api/admin/db/download"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const res = await fetch('/api/admin/db/download', {
+                        headers: { 'Authorization': `Bearer ${getAdminToken()}` }
+                      });
+                      if (!res.ok) throw new Error('Brak uprawnień');
+                      const blob = await res.blob();
+                      const url = window.URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = 'dev.db';
+                      document.body.appendChild(a);
+                      a.click();
+                      a.remove();
+                      window.URL.revokeObjectURL(url);
+                    } catch (err) {
+                      alert('Błąd pobierania bazy danych.');
+                    }
+                  }}
                   className="inline-flex h-12 items-center justify-center gap-2 border border-zinc-600 bg-zinc-800 px-6 text-xs font-black uppercase tracking-[0.2em] transition hover:bg-zinc-700 hover:border-zinc-500 whitespace-nowrap"
                 >
                   <Download size={16} />
                   Pobierz Kopię Bazy
-                </a>
+                </button>
                 
                 <div className="flex flex-col md:flex-row items-start md:items-center gap-4 border border-zinc-700 p-4 bg-zinc-900/50 w-full xl:w-auto">
                   <label className="text-xs uppercase tracking-widest text-zinc-400 whitespace-nowrap">
@@ -1286,10 +1303,9 @@ export default function AdminPage() {
                       formData.append('dbfile', fileInput.files[0]);
                       
                       try {
-                        const token = localStorage.getItem('tg_admin_token');
                         const res = await fetch('/api/admin/db/upload', {
                           method: 'POST',
-                          headers: { 'Authorization': `Bearer ${token}` },
+                          headers: { 'Authorization': `Bearer ${getAdminToken()}` },
                           body: formData
                         });
                         const data = await res.json();
