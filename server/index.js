@@ -953,7 +953,7 @@ app.use(cors({
 }));
 
 app.use(helmet({
-  contentSecurityPolicy: IS_PRODUCTION ? undefined : false,
+  contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false
 }));
 
@@ -2171,7 +2171,8 @@ app.get('/api/admin/db/download', requireAdmin, (req, res) => {
   res.download(absoluteDbPath, 'dev.db');
 });
 
-app.post('/api/admin/db/upload', requireAdmin, upload.single('dbfile'), async (req, res) => {
+const uploadDb = multer({ dest: path.join(adminDataDir, 'temp'), limits: { fileSize: 50 * 1024 * 1024 } });
+app.post('/api/admin/db/upload', requireAdmin, uploadDb.single('dbfile'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Brak pliku' });
   const dbUrl = process.env.DATABASE_URL || `file:${path.join(projectRoot, 'prisma', 'dev.db')}`;
   const relativeDbPath = dbUrl.replace(/^file:/, '');
