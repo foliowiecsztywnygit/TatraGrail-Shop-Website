@@ -9,7 +9,7 @@
     "dev:frontend": "vite",
     "dev:backend": "nodemon server/index.js",
     "build": "vite build",
-    "start": "prisma migrate deploy && node server/index.js",
+    "start": "prisma db push --skip-generate && node server/index.js",
     "preview": "vite preview",
     "test": "node --test"
   },
