@@ -1,13 +1,17 @@
 export const DEFAULT_STOREFRONT_SETTINGS = {
   saleEnabled: false,
   saleAnnouncement: 'WYPRZEDAZ AKTYWNA - CENY PROMOCYJNE NA WYBRANYCH MODELACH',
-  saleBadgeLabel: 'WYPRZEDAZ'
+  saleBadgeLabel: 'WYPRZEDAZ',
+  announcementEnabled: false,
+  announcementText: 'DROP 01 | ZOSTALO MALO'
 }
 
 export const normalizeStorefrontSettings = (settings = {}) => ({
   saleEnabled: Boolean(settings.saleEnabled),
   saleAnnouncement: String(settings.saleAnnouncement || DEFAULT_STOREFRONT_SETTINGS.saleAnnouncement).trim() || DEFAULT_STOREFRONT_SETTINGS.saleAnnouncement,
-  saleBadgeLabel: String(settings.saleBadgeLabel || DEFAULT_STOREFRONT_SETTINGS.saleBadgeLabel).trim() || DEFAULT_STOREFRONT_SETTINGS.saleBadgeLabel
+  saleBadgeLabel: String(settings.saleBadgeLabel || DEFAULT_STOREFRONT_SETTINGS.saleBadgeLabel).trim() || DEFAULT_STOREFRONT_SETTINGS.saleBadgeLabel,
+  announcementEnabled: Boolean(settings.announcementEnabled),
+  announcementText: String(settings.announcementText || DEFAULT_STOREFRONT_SETTINGS.announcementText).trim() || DEFAULT_STOREFRONT_SETTINGS.announcementText
 })
 
 export const applyStorefrontPricingToProduct = (product, settings = DEFAULT_STOREFRONT_SETTINGS) => {

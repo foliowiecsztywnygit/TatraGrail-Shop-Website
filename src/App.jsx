@@ -3,6 +3,7 @@ import Header from './components/Header'
 import Footer from './components/Footer'
 import Drop01Section from './components/Drop01Section'
 import ProductGrid from './components/ProductGrid'
+import AboutUsSection from './components/AboutUsSection'
 import ProductPage from './pages/ProductPage'
 import CartDrawer from './components/CartDrawer'
 import CheckoutPage from './pages/CheckoutPage'
@@ -171,6 +172,7 @@ export default function App() {
       <>
         <Drop01Section categories={activeCategories} />
         <ProductGrid categories={activeCategories} />
+        <AboutUsSection />
       </>
     )
   } else {

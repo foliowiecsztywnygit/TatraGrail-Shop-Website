@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Archive, Copy, FileClock, Files, Filter, LayoutDashboard, LogOut, Mail, Package2, Plus, RefreshCw, Save, Search, Send, Trash2, Upload } from 'lucide-react'
+import { Archive, Boxes, Copy, FileClock, Files, Filter, LayoutDashboard, LogOut, Mail, Megaphone, Package2, Plus, RefreshCw, Save, Search, Send, Trash2, Upload } from 'lucide-react'
 import RichTextEditor from '../components/RichTextEditor'
 import AdminOrdersPanel from '../components/admin/AdminOrdersPanel'
+import InventoryPanel from '../components/admin/InventoryPanel'
 import { apiFetch, apiFormData, apiJson, clearAdminToken, getAdminToken, getApiBaseUrl, setAdminToken } from '../lib/api'
 
 const pageLabels = {
@@ -365,6 +366,21 @@ function PageCustomFields({ form, onChange }) {
             <Input value={customData.saleBadgeLabel || ''} onChange={(event) => updateCustomData('saleBadgeLabel', event.target.value)} />
           </Field>
         </div>
+        <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-white pt-2">Pasek ogloszeniowy DROP</h3>
+        <label className="flex items-center justify-between gap-4 border border-zinc-800 bg-zinc-950 p-4 text-sm text-zinc-300">
+          <div>
+            <p className="font-bold uppercase tracking-[0.16em] text-white">Wlacz pasek DROP 01</p>
+            <p className="mt-1 text-xs text-zinc-500">Wyswietla animowany czerwony pasek scrollujacy na gorze strony.</p>
+          </div>
+          <input
+            type="checkbox"
+            checked={Boolean(customData.announcementEnabled)}
+            onChange={(event) => updateCustomData('announcementEnabled', event.target.checked)}
+          />
+        </label>
+        <Field label="Tekst paska DROP">
+          <Input value={customData.announcementText || ''} placeholder="DROP 01 | ZOSTALO MALO" onChange={(event) => updateCustomData('announcementText', event.target.value)} />
+        </Field>
       </div>
     )
   }
@@ -873,6 +889,28 @@ export default function AdminPage() {
     }
   }
 
+  const quickToggleAnnouncement = async (enabled, text) => {
+    // Find storefront-settings page and update its customData
+    const storefrontPage = pages.find((p) => p.key === 'storefront-settings')
+    if (!storefrontPage) {
+      setErrorFeedback('Nie znaleziono strony storefront-settings. Otwórz zakładkę Strony i zapisz ustawienia raz ręcznie.')
+      return
+    }
+    try {
+      const updatedCustomData = {
+        ...(storefrontPage.customData || {}),
+        announcementEnabled: enabled,
+        announcementText: text || 'DROP 01 | ZOSTAŁO MAŁO'
+      }
+      const payload = { ...createPageForm(storefrontPage), customData: updatedCustomData }
+      await apiJson(`/api/admin/pages/${storefrontPage.id}`, 'PUT', payload, { includeAdmin: true })
+      await loadPages()
+      setSuccessFeedback(enabled ? 'Pasek DROP 01 włączony — widoczny na stronie głównej.' : 'Pasek DROP 01 wyłączony.')
+    } catch (err) {
+      setErrorFeedback('Błąd zapisu paska ogłoszeniowego.')
+    }
+  }
+
   const handleOrderSubmit = async (event) => {
     event.preventDefault()
     if (!selectedOrderId || !orderForm) return
@@ -1112,6 +1150,7 @@ export default function AdminPage() {
             {[
               ['dashboard', 'Dashboard', LayoutDashboard],
               ['products', 'Produkty', Package2],
+              ['inventory', 'Magazyn', Boxes],
               ['pages', 'Strony', Files],
               ['orders', 'Zamowienia', Send],
               ['submissions', 'Formularze', Mail]
@@ -1143,6 +1182,73 @@ export default function AdminPage() {
               <StatCard icon={Mail} label="Wiadomosci" value={dashboard.contacts} />
               <StatCard icon={Archive} label="Zwroty" value={dashboard.returns} />
             </div>
+
+            {/* Announcement Bar Quick Toggle */}
+            {(() => {
+              const storefrontPage = pages.find((p) => p.key === 'storefront-settings')
+              const customData = storefrontPage?.customData || {}
+              const isOn = Boolean(customData.announcementEnabled)
+              const currentText = String(customData.announcementText || 'DROP 01 | ZOSTAŁO MAŁO')
+              return (
+                <div className={`border p-6 transition-all ${
+                  isOn
+                    ? 'border-red-600/60 bg-gradient-to-r from-red-950/50 via-black to-red-950/50'
+                    : 'border-zinc-800 bg-black/70'
+                }`}>
+                  <div className="flex flex-wrap items-center justify-between gap-6">
+                    <div className="flex items-center gap-4">
+                      <div className={`flex h-12 w-12 items-center justify-center border ${
+                        isOn ? 'border-red-500/50 bg-red-950/50 text-red-400' : 'border-zinc-700 bg-zinc-900 text-zinc-500'
+                      }`}>
+                        <Megaphone size={20} />
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.25em] text-zinc-400">Pasek promocji</p>
+                        <h3 className="mt-0.5 text-lg font-black uppercase tracking-[0.2em]">
+                          {isOn
+                            ? <span className="text-red-300">{currentText}</span>
+                            : <span className="text-zinc-500">Pasek wyłączony</span>
+                          }
+                        </h3>
+                        <p className="mt-1 text-[10px] uppercase tracking-widest text-zinc-600">
+                          {isOn ? '● Aktywny — widoczny na stronie głównej' : '○ Nieaktywny'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <input
+                        id="announcement-text"
+                        type="text"
+                        defaultValue={currentText}
+                        key={currentText}
+                        className="border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs text-white tracking-wider focus:outline-none focus:border-white w-64"
+                        placeholder="Tekst paska..."
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            quickToggleAnnouncement(isOn, e.target.value)
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const input = document.getElementById('announcement-text')
+                          quickToggleAnnouncement(!isOn, input?.value || currentText)
+                        }}
+                        className={`inline-flex items-center gap-2 border px-5 py-3 text-xs font-black uppercase tracking-[0.2em] transition ${
+                          isOn
+                            ? 'border-red-500 bg-red-950 text-red-300 hover:bg-red-900'
+                            : 'border-white bg-white text-black hover:bg-transparent hover:text-white'
+                        }`}
+                      >
+                        <Megaphone size={14} />
+                        {isOn ? 'Wyłącz' : 'Włącz'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
             <section className="border border-zinc-800 bg-black/70 p-6">
               <SectionTitle icon={LogOut} title="Bezpieczenstwo konta" />
               <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-3" onSubmit={handlePasswordSubmit}>
@@ -1642,6 +1748,17 @@ export default function AdminPage() {
               </div>
             </section>
           </div>
+        )}
+
+        {tab === 'inventory' && (
+          <InventoryPanel
+            products={products}
+            onSaved={(updatedProduct) => {
+              setProducts((prev) => prev.map((p) => p.id === updatedProduct.id ? updatedProduct : p))
+              setSuccessFeedback(`Stan magazynowy dla "${updatedProduct.title?.pl || updatedProduct.name || ''}" zapisany.`)
+            }}
+            onError={(msg) => setErrorFeedback(msg)}
+          />
         )}
       </div>
     </div>

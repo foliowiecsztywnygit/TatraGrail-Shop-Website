@@ -1,4 +1,4 @@
-@tailwind base;
+﻿@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -62,7 +62,7 @@
     animation: liquid-metal 8s ease-in-out infinite;
   }
 
-  /* Nowa gruba linia podkreślenia dla linków nawigacji */
+  /* Nowa gruba linia podkreĹ›lenia dla linkĂłw nawigacji */
   .metal-nav-link {
     position: relative;
     display: inline-block;
@@ -120,4 +120,10 @@
     background-size: 300% 300%;
     animation: liquid-metal 4s ease-in-out infinite;
   }
+}
+
+/* Marquee animation for announcement bar */
+@keyframes marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }

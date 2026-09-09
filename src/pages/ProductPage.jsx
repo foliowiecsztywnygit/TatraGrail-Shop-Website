@@ -209,17 +209,36 @@ export default function ProductPage({ product, allProducts: allProductsProp = nu
               </button>
             </div>
             <div className="grid grid-cols-5 gap-2">
-              {sizes.map(size => (
-                <button 
-                  key={size}
-                  onClick={() => setSelectedSize(size)}
-                  className={`py-3 text-xs font-bold tracking-widest border transition-all ${selectedSize === size ? 'bg-black text-white border-black' : 'bg-white text-black border-gray-200 hover:border-black'}`}
-                >
-                  {size}
-                </button>
-              ))}
+              {sizes.map(size => {
+                const sizeStock = product.sizeStock || {}
+                const hasSizeStock = Object.keys(sizeStock).length > 0
+                const qty = hasSizeStock ? (sizeStock[size] ?? 0) : 1
+                const isOutOfStock = hasSizeStock && qty <= 0
+                return (
+                  <button
+                    key={size}
+                    onClick={() => !isOutOfStock && setSelectedSize(size)}
+                    disabled={isOutOfStock}
+                    title={isOutOfStock ? 'Rozmiar niedostepny' : undefined}
+                    className={`relative py-3 text-xs font-bold tracking-widest border transition-all
+                      ${isOutOfStock
+                        ? 'border-gray-100 text-gray-300 cursor-not-allowed bg-gray-50 line-through'
+                        : selectedSize === size
+                          ? 'bg-black text-white border-black'
+                          : 'bg-white text-black border-gray-200 hover:border-black'
+                      }`}
+                  >
+                    {size}
+                    {isOutOfStock && (
+                      <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <span className="w-full h-px bg-gray-300 absolute rotate-[-20deg]" />
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
             </div>
-            {product.stock <= 3 && <p className="text-red-500 text-xs font-bold tracking-widest mt-2">{t('pdp.low_stock')}</p>}
+            {product.stock <= 3 && product.stock > 0 && <p className="text-red-500 text-xs font-bold tracking-widest mt-2">{t('pdp.low_stock')}</p>}
           </div>
 
           {/* Upsell / Bundles Section z wyborem sub-wariantów */}

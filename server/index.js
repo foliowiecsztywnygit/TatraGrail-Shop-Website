@@ -4,11 +4,13 @@ import dotenv from 'dotenv';
 import Stripe from 'stripe';
 import { PrismaClient } from '../generated/prisma-client/index.js';
 import crypto from 'crypto';
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import multer from 'multer';
 import path from 'path';
 import { promises as fsPromises } from 'fs';
 import { fileURLToPath } from 'url';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import { defaultCmsPages, defaultProductSeeds } from '../src/shared/cmsDefaults.js';
 import {
   buildAdminOrderUpdateInput,
@@ -43,17 +45,30 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_mock', {
   apiVersion: '2023-10-16'
 });
 
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const ADMIN_TOKEN_TTL_MS = 1000 * 60 * 60 * 12;
 const MIN_FORM_SUBMISSION_MS = 1500;
 const ADMIN_DEFAULT_USERNAME = process.env.ADMIN_USERNAME || 'admin';
-const ADMIN_DEFAULT_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+const ADMIN_DEFAULT_PASSWORD = process.env.ADMIN_PASSWORD || (IS_PRODUCTION ? undefined : 'admin123');
 const ADMIN_PASSWORD_MIN_LENGTH = 10;
 const STOREFRONT_SETTINGS_KEY = 'storefront-settings';
 const DEFAULT_STOREFRONT_SETTINGS = {
   saleEnabled: false,
   saleAnnouncement: 'WYPRZEDAZ AKTYWNA - CENY PROMOCYJNE NA WYBRANYCH MODELACH',
-  saleBadgeLabel: 'WYPRZEDAZ'
+  saleBadgeLabel: 'WYPRZEDAZ',
+  announcementEnabled: false,
+  announcementText: 'DROP 01 | ZOSTALO MALO'
 };
+
+if (IS_PRODUCTION && !process.env.ADMIN_PASSWORD) {
+  console.warn('[SECURITY] ADMIN_PASSWORD env var is not set. Default password fallback is disabled in production.');
+}
+if (IS_PRODUCTION && !process.env.ADMIN_TOKEN_SECRET) {
+  console.warn('[SECURITY] ADMIN_TOKEN_SECRET env var is not set. Using ADMIN_PASSWORD as fallback — set a dedicated secret for production.');
+}
+if (IS_PRODUCTION && !process.env.DROP_TOKEN_SECRET && !process.env.DROP_PASSWORD) {
+  console.warn('[SECURITY] Neither DROP_TOKEN_SECRET nor DROP_PASSWORD is set. Drop tokens will use an insecure dev fallback.');
+}
 
 const toBase64Url = (value) =>
   Buffer.from(value, 'utf8').toString('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
@@ -217,6 +232,8 @@ const parseJsonObject = (value, fallback = {}) => {
 
 const stringifyJson = (value) => JSON.stringify(value ?? null);
 
+const escapeHtml = (value) => String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
 const reportDebugServerEvent = () => {};
 const reportAdminMonitorEvent = () => {};
 
@@ -266,6 +283,7 @@ const verifyAdminPassword = async (password) => {
   if (stored?.passwordHash) {
     return verifyPasswordHash(password, stored.passwordHash);
   }
+  if (!ADMIN_DEFAULT_PASSWORD) return false;
   return password === ADMIN_DEFAULT_PASSWORD;
 };
 
@@ -286,7 +304,9 @@ const computeDiscountPercent = (price, salePrice) => {
 const normalizeStorefrontSettings = (customData = {}) => ({
   saleEnabled: Boolean(customData.saleEnabled),
   saleAnnouncement: String(customData.saleAnnouncement || DEFAULT_STOREFRONT_SETTINGS.saleAnnouncement).trim() || DEFAULT_STOREFRONT_SETTINGS.saleAnnouncement,
-  saleBadgeLabel: String(customData.saleBadgeLabel || DEFAULT_STOREFRONT_SETTINGS.saleBadgeLabel).trim() || DEFAULT_STOREFRONT_SETTINGS.saleBadgeLabel
+  saleBadgeLabel: String(customData.saleBadgeLabel || DEFAULT_STOREFRONT_SETTINGS.saleBadgeLabel).trim() || DEFAULT_STOREFRONT_SETTINGS.saleBadgeLabel,
+  announcementEnabled: Boolean(customData.announcementEnabled),
+  announcementText: String(customData.announcementText || DEFAULT_STOREFRONT_SETTINGS.announcementText).trim() || DEFAULT_STOREFRONT_SETTINGS.announcementText
 });
 
 const getStorefrontSettings = async () => {
@@ -346,6 +366,7 @@ const serializeProduct = (req, product, options = {}) => {
     currency: product.currency,
     vatRate: product.vatRate,
     stock: product.stock,
+    sizeStock: parseJsonObject(product.sizeStock),
     weight: product.weight,
     dimensions: {
       width: product.width,
@@ -459,6 +480,7 @@ const buildProductInput = (body, existingProduct = null) => {
       dropFeatured: Boolean(body.dropFeatured),
       colors: stringifyJson(colors),
       sizes: stringifyJson(sizes),
+      sizeStock: body.sizeStock != null ? stringifyJson(body.sizeStock) : undefined,
       seoTitle: String(body.seoTitle || '').trim() || null,
       metaDescription: String(body.metaDescription || '').trim() || null
     },
@@ -879,6 +901,7 @@ app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, 
         include: { items: true }
       });
 
+      // Webhook tylko oznacza platnosc jako oplacona — stock byl juz odjety przy tworzeniu zamowienia
       try {
         const shipmentData = await createInPostShipment(order);
         await prisma.order.update({
@@ -918,25 +941,44 @@ app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, 
   return res.send();
 });
 
-app.use(cors());
+// --- Security middleware ---
+const allowedOrigins = (process.env.CORS_ORIGINS || process.env.FRONTEND_URL || 'http://localhost:5173')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+app.use(cors({
+  origin: IS_PRODUCTION ? allowedOrigins : true,
+  credentials: true
+}));
+
+app.use(helmet({
+  contentSecurityPolicy: IS_PRODUCTION ? undefined : false,
+  crossOriginEmbedderPolicy: false
+}));
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: 'Zbyt wiele prob logowania. Sprobuj ponownie za 15 minut.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
 app.use(express.json({ limit: '8mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(uploadsDir));
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.ethereal.email',
-  port: process.env.SMTP_PORT || 587,
-  auth: {
-    user: process.env.SMTP_USER || 'mockUser',
-    pass: process.env.SMTP_PASS || 'mockPass'
-  }
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const createInPostShipment = async (order) => {
   if (process.env.INPOST_API_TOKEN === 'mock_inpost_token' || !process.env.INPOST_API_TOKEN) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('InPost API not configured. Manual shipment required.');
+    }
     return {
       shipmentId: `mock_shipment_${crypto.randomUUID().slice(0, 8)}`,
-      trackingNumber: `6${Math.floor(Math.random() * 10000000000000000000000).toString().padStart(23, '0')}`,
+      trackingNumber: `6${Array.from({length: 23}, () => Math.floor(Math.random() * 10)).join('')}`,
       status: 'created'
     };
   }
@@ -1007,23 +1049,20 @@ const createInPostShipment = async (order) => {
 const sendOrderConfirmationEmail = async (order) => {
   const isLocker = order.deliveryMethod === 'inpost_locker';
   const deliveryInfo = isLocker
-    ? `Paczkomat InPost: <strong>${order.inpostPointId}</strong><br/>${order.inpostPointAddress}, ${order.inpostPointPostalCode} ${order.inpostPointCity}`
-    : `Kurier InPost<br/>${order.street} ${order.houseNumber}, ${order.postalCode} ${order.city}`;
-  const trackingInfo = order.trackingNumber
-    ? `<p>Numer przesylki: <strong>${order.trackingNumber}</strong></p><p><a href="https://inpost.pl/sledzenie-przesylek?number=${order.trackingNumber}" target="_blank" rel="noreferrer">Sledz przesylke</a></p>`
-    : '';
+    ? `Paczkomat InPost: <strong>${escapeHtml(order.inpostPointId)}</strong><br/>${escapeHtml(order.inpostPointAddress)}, ${escapeHtml(order.inpostPointPostalCode)} ${escapeHtml(order.inpostPointCity)}`
+    : `Kurier InPost<br/>${escapeHtml(order.street)} ${escapeHtml(order.houseNumber)}, ${escapeHtml(order.postalCode)} ${escapeHtml(order.city)}`;
 
-  await transporter.sendMail({
-    from: '"TatraGrail" <no-reply@tatragrail.com>',
+  await resend.emails.send({
+    from: 'TatraGrail <no-reply@tatragrail.pl>',
     to: order.email,
-    subject: `Potwierdzenie zamowienia ${order.orderNumber}`,
+    subject: `Potwierdzenie zamowienia ${escapeHtml(order.orderNumber)}`,
     html: `
       <h1>Dziekujemy za zakupy w TatraGrail!</h1>
-      <p>Twoje zamowienie <strong>${order.orderNumber}</strong> zostalo oplacone i jest realizowane.</p>
+      <p>Twoje zamowienie <strong>${escapeHtml(order.orderNumber)}</strong> zostalo oplacone i jest realizowane.</p>
       <p>Kwota zamowienia: <strong>${order.total.toFixed(2)} PLN</strong></p>
       <h3>Dane dostawy</h3>
       <p>${deliveryInfo}</p>
-      ${trackingInfo}
+      <p><strong>Ważne:</strong> Status oraz kod odbioru przesyłki znajdziesz wyłącznie w aplikacji InPost Mobile zarejestrowanej na podany przy zamówieniu numer telefonu.</p>
       <p><a href="${frontendOrigin()}/tracking/${order.trackingToken}">Szczegoly zamowienia</a></p>
     `
   });
@@ -1214,84 +1253,178 @@ app.post('/api/create-payment-intent', async (req, res) => {
   const normalizedCustomer = buildCheckoutCustomer(customer, delivery);
 
   try {
-    const subtotal = cart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+    // --- Server-side price lookup (never trust client prices) ---
+    const productIds = Array.from(new Set(cart.map((item) => item.productId).filter(Boolean)));
+    const products = await prisma.product.findMany({
+      where: { id: { in: productIds }, deletedAt: null }
+    });
+    const productMap = new Map(products.map((p) => [p.id, p]));
+    const storefrontSettings = await getStorefrontSettings();
+
+    // Validate every cart item exists and calculate server-side prices
+    const resolvedCart = [];
+    const stockErrors = [];
+    for (const item of cart) {
+      const product = productMap.get(item.productId);
+      if (!product) {
+        return res.status(400).json({ error: `Produkt "${String(item.productName || item.productId).slice(0, 60)}" nie istnieje.` });
+      }
+      if (product.status === 'discontinued' || product.isArchived) {
+        return res.status(400).json({ error: `Produkt "${product.name}" jest niedostepny.` });
+      }
+      const quantity = Math.max(1, Math.floor(Number(item.quantity) || 1));
+
+      // Sprawdz dostepnosc konkretnego rozmiaru
+      if (item.size && product.sizeStock) {
+        try {
+          const sizeStock = JSON.parse(product.sizeStock);
+          if (typeof sizeStock === 'object' && sizeStock !== null && item.size in sizeStock) {
+            const sizeQty = Number(sizeStock[item.size] ?? 0);
+            if (sizeQty < quantity) {
+              stockErrors.push(`"${product.name}" rozmiar ${item.size} — dostepne: ${sizeQty}, zamowione: ${quantity}`);
+            }
+          }
+        } catch (_) { /* ignoruj blad parsowania */ }
+      }
+
+      if (product.stock < quantity) {
+        stockErrors.push(`"${product.name}" — dostepne: ${product.stock}, zamowione: ${quantity}`);
+      }
+      // Use sale price if storefront sale is enabled and product has valid sale price
+      const hasSale = storefrontSettings.saleEnabled && Number.isFinite(product.salePrice) && product.salePrice > 0 && product.salePrice < product.price;
+      const serverUnitPrice = hasSale ? product.salePrice : product.price;
+      resolvedCart.push({
+        productId: product.id,
+        variantId: item.variantId || null,
+        size: item.size || null,
+        quantity,
+        unitPrice: serverUnitPrice,
+        currency: product.currency || 'PLN',
+        image: item.image || null,
+        productName: product.name
+      });
+    }
+
+    if (stockErrors.length > 0) {
+      return res.status(400).json({ error: `Niewystarczajacy stan magazynowy: ${stockErrors.join('; ')}` });
+    }
+
+    const subtotal = resolvedCart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
     let discount = 0;
     let appliedCode = null;
     let partnerId = null;
-    const products = await prisma.product.findMany({
-      where: {
-        id: {
-          in: Array.from(new Set(cart.map((item) => item.productId).filter(Boolean)))
-        }
-      }
-    });
 
+    // --- Atomic promo code validation + increment via transaction ---
     if (promoCode) {
-      const promo = await prisma.promoCode.findUnique({ where: { code: promoCode } });
-      if (promo && promo.active && (!promo.expiration || promo.expiration > new Date())) {
-        discount = promo.type === 'percentage' ? subtotal * (promo.value / 100) : promo.value;
-        appliedCode = promo.code;
-        partnerId = promo.partnerId;
+      const promoResult = await prisma.$transaction(async (tx) => {
+        const promo = await tx.promoCode.findUnique({ where: { code: promoCode } });
+        if (!promo || !promo.active) return null;
+        if (promo.expiration && promo.expiration < new Date()) return null;
+        if (promo.usageLimit && promo.usageCount >= promo.usageLimit) return null;
+        if (promo.minimumCartValue && subtotal < promo.minimumCartValue) return null;
 
-        await prisma.promoCode.update({
+        await tx.promoCode.update({
           where: { code: promo.code },
           data: { usageCount: { increment: 1 } }
         });
+
+        return promo;
+      });
+
+      if (promoResult) {
+        const rawDiscount = promoResult.type === 'percentage'
+          ? subtotal * (promoResult.value / 100)
+          : promoResult.value;
+        discount = Math.min(Math.max(0, rawDiscount), subtotal);
+        appliedCode = promoResult.code;
+        partnerId = promoResult.partnerId;
       }
     }
 
     const shipping = 15;
-    const total = subtotal - discount + shipping;
+    const total = Math.max(0, subtotal - discount + shipping);
     const orderNumber = `TG-${new Date().getFullYear()}-${crypto.randomInt(100000, 999999)}`;
-    const packageMetrics = estimatePackageMetrics(cart, products);
+    const packageMetrics = estimatePackageMetrics(resolvedCart, products);
 
-    const order = await prisma.order.create({
-      data: {
-        orderNumber,
-        email: normalizedCustomer.values.email,
-        phone: normalizedCustomer.values.phone,
-        checkoutMode: normalizedCustomer.checkoutMode,
-        firstName: normalizedCustomer.values.firstName,
-        lastName: normalizedCustomer.values.lastName,
-        country: normalizedCustomer.values.country,
-        city: normalizedCustomer.values.city,
-        postalCode: normalizedCustomer.values.postalCode,
-        street: normalizedCustomer.values.street,
-        houseNumber: normalizedCustomer.values.houseNumber,
-        companyName: normalizedCustomer.values.companyName,
-        nip: normalizedCustomer.values.nip,
-        subtotal,
-        discount,
-        shipping,
-        total,
-        goodsValue: subtotal,
-        appliedCode,
-        partnerId,
-        courierCompany: 'inpost',
-        packageWeight: packageMetrics.packageWeight,
-        packageLength: packageMetrics.packageLength,
-        packageWidth: packageMetrics.packageWidth,
-        packageHeight: packageMetrics.packageHeight,
-        orderNotes: String(customer?.orderNotes || '').trim() || null,
-        deliveryMethod: delivery?.method || 'inpost_courier',
-        inpostPointId: delivery?.point?.id || null,
-        inpostPointName: delivery?.point?.name || null,
-        inpostPointAddress: delivery?.point?.address || null,
-        inpostPointCity: delivery?.point?.city || null,
-        inpostPointPostalCode: delivery?.point?.postalCode || null,
-        items: {
-          create: cart.map((item) => ({
-            productId: item.productId,
-            variantId: item.variantId,
-            size: item.size,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            currency: item.currency || 'PLN',
-            image: item.image,
-            productName: item.productName
-          }))
+    // --- Atomic order creation + stock decrement (per rozmiar i ogolnie) ---
+    const order = await prisma.$transaction(async (tx) => {
+      // Decrement stock for each product (total + per-size)
+      for (const item of resolvedCart) {
+        // 1. Sprawdz i obniz ogolny stock
+        const updated = await tx.product.updateMany({
+          where: { id: item.productId, stock: { gte: item.quantity } },
+          data: { stock: { decrement: item.quantity } }
+        });
+        if (updated.count === 0) {
+          throw new Error(`Produkt "${item.productName}" - brak wystarczajacego stanu magazynowego.`);
+        }
+
+        // 2. Obniz sizeStock dla konkretnego rozmiaru (jesli istnieje)
+        if (item.size) {
+          const product = await tx.product.findUnique({ where: { id: item.productId } });
+          if (product?.sizeStock) {
+            try {
+              const sizeStock = JSON.parse(product.sizeStock);
+              if (typeof sizeStock === 'object' && sizeStock !== null && item.size in sizeStock) {
+                sizeStock[item.size] = Math.max(0, (Number(sizeStock[item.size]) || 0) - item.quantity);
+                await tx.product.update({
+                  where: { id: item.productId },
+                  data: { sizeStock: JSON.stringify(sizeStock) }
+                });
+              }
+            } catch (_) { /* ignoruj blad parsowania */ }
+          }
         }
       }
+
+      return tx.order.create({
+        data: {
+          orderNumber,
+          email: normalizedCustomer.values.email,
+          phone: normalizedCustomer.values.phone,
+          checkoutMode: normalizedCustomer.checkoutMode,
+          firstName: normalizedCustomer.values.firstName,
+          lastName: normalizedCustomer.values.lastName,
+          country: normalizedCustomer.values.country,
+          city: normalizedCustomer.values.city,
+          postalCode: normalizedCustomer.values.postalCode,
+          street: normalizedCustomer.values.street,
+          houseNumber: normalizedCustomer.values.houseNumber,
+          companyName: normalizedCustomer.values.companyName,
+          nip: normalizedCustomer.values.nip,
+          subtotal,
+          discount,
+          shipping,
+          total,
+          goodsValue: subtotal,
+          appliedCode,
+          partnerId,
+          courierCompany: 'inpost',
+          packageWeight: packageMetrics.packageWeight,
+          packageLength: packageMetrics.packageLength,
+          packageWidth: packageMetrics.packageWidth,
+          packageHeight: packageMetrics.packageHeight,
+          orderNotes: String(customer?.orderNotes || '').trim() || null,
+          deliveryMethod: delivery?.method || 'inpost_courier',
+          inpostPointId: delivery?.point?.id || null,
+          inpostPointName: delivery?.point?.name || null,
+          inpostPointAddress: delivery?.point?.address || null,
+          inpostPointCity: delivery?.point?.city || null,
+          inpostPointPostalCode: delivery?.point?.postalCode || null,
+          items: {
+            create: resolvedCart.map((item) => ({
+              productId: item.productId,
+              variantId: item.variantId,
+              size: item.size,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              currency: item.currency,
+              image: item.image,
+              productName: item.productName
+            }))
+          }
+        }
+      });
     });
 
     if (!process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY === 'sk_test_mock') {
@@ -1306,7 +1439,7 @@ app.post('/api/create-payment-intent', async (req, res) => {
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(total * 100),
       currency: 'pln',
-      payment_method_types: ['card', 'blik'],
+      automatic_payment_methods: { enabled: true },
       metadata: { orderId: order.id }
     });
 
@@ -1341,6 +1474,7 @@ app.get('/api/order/:trackingToken', async (req, res) => {
 });
 
 app.get('/api/mock-stripe/:orderId', async (req, res) => {
+  if (IS_PRODUCTION) return res.status(404).send('Not available in production');
   const order = await prisma.order.findUnique({ where: { id: req.params.orderId } });
   if (!order) return res.status(404).send('Order not found');
 
@@ -1370,6 +1504,7 @@ app.get('/api/mock-stripe/:orderId', async (req, res) => {
 });
 
 app.post('/api/mock-stripe/:orderId/pay', async (req, res) => {
+  if (IS_PRODUCTION) return res.status(404).send('Not available in production');
   const order = await prisma.order.findUnique({
     where: { id: req.params.orderId },
     include: { items: true }
@@ -1482,7 +1617,7 @@ app.post('/api/contact-submissions', async (req, res) => {
     return res.status(400).json({ error: 'Formularz zostal wyslany zbyt szybko.' });
   }
 
-  await prisma.contactSubmission.create({
+  const submission = await prisma.contactSubmission.create({
     data: {
       name: String(name).trim(),
       email: String(email).trim(),
@@ -1490,6 +1625,21 @@ app.post('/api/contact-submissions', async (req, res) => {
       message: String(message).trim()
     }
   });
+
+  // Powiadomienie dla admina
+  await resend.emails.send({
+    from: 'TatraGrail <no-reply@tatragrail.pl>',
+    to: 'kontakt@tatragrail.pl',
+    subject: `Nowa wiadomość od ${escapeHtml(submission.name)}`,
+    html: `
+      <h2>Nowe zgłoszenie z formularza kontaktowego</h2>
+      <p><strong>Imię i nazwisko:</strong> ${escapeHtml(submission.name)}</p>
+      <p><strong>Email:</strong> <a href="mailto:${escapeHtml(submission.email)}">${escapeHtml(submission.email)}</a></p>
+      ${submission.phone ? `<p><strong>Telefon:</strong> ${escapeHtml(submission.phone)}</p>` : ''}
+      <p><strong>Wiadomość:</strong></p>
+      <blockquote style="border-left:3px solid #ccc;margin:0;padding:0 1em;color:#555">${escapeHtml(submission.message).replace(/\n/g, '<br/>')}</blockquote>
+    `
+  }).catch((err) => console.error('[resend] contact notification failed:', err));
 
   return res.json({ success: true });
 });
@@ -1518,7 +1668,7 @@ app.post('/api/return-requests', async (req, res) => {
   return res.json({ success: true });
 });
 
-app.post('/api/admin/login', async (req, res) => {
+app.post('/api/admin/login', loginLimiter, async (req, res) => {
   const configuredUsername = await getAdminUsername();
   const providedUsername = String(req.body?.username || '').trim() || configuredUsername;
   const password = String(req.body?.password || '');
@@ -1882,6 +2032,36 @@ app.put('/api/admin/products/:id', requireAdmin, async (req, res) => {
     console.error(error);
     return res.status(500).json({ error: 'Nie udalo sie zaktualizowac produktu.' });
   }
+});
+
+app.patch('/api/admin/products/:id/stock', requireAdmin, async (req, res) => {
+  const { sizeStock } = req.body || {};
+  if (!sizeStock || typeof sizeStock !== 'object') {
+    return res.status(400).json({ error: 'Pole sizeStock jest wymagane i musi byc obiektem.' });
+  }
+
+  // Ensure all values are non-negative integers
+  const sanitized = {};
+  for (const [size, qty] of Object.entries(sizeStock)) {
+    const num = parseInt(qty, 10);
+    if (!Number.isFinite(num) || num < 0) {
+      return res.status(400).json({ error: `Nieprawidlowa ilosc dla rozmiaru ${size}.` });
+    }
+    sanitized[size] = num;
+  }
+
+  const totalStock = Object.values(sanitized).reduce((s, v) => s + v, 0);
+
+  const product = await prisma.product.update({
+    where: { id: req.params.id },
+    data: {
+      sizeStock: stringifyJson(sanitized),
+      stock: totalStock
+    },
+    include: { images: true }
+  });
+
+  return res.json({ product: serializeProduct(req, product) });
 });
 
 app.post('/api/admin/products/:id/clone', requireAdmin, async (req, res) => {

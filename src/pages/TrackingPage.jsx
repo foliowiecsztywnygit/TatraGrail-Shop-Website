@@ -138,8 +138,12 @@ export default function TrackingPage({ token }) {
               </h2>
               <div className="text-sm space-y-2 text-gray-300">
                 <p><span className="text-white">Metoda:</span> {isLocker ? 'Paczkomat InPost' : 'Kurier InPost'}</p>
-                {order.trackingNumber && (
-                  <p><span className="text-white">Numer przesyłki:</span> <span className="font-mono text-green-500 tracking-wider bg-[#222] px-2 py-1 rounded-sm">{order.trackingNumber}</span></p>
+                {isLocker && (
+                  <div className="mt-4 p-3 bg-blue-900/20 border border-blue-500/30 rounded-sm">
+                    <p className="text-xs text-blue-200">
+                      <strong>Ważne:</strong> Do śledzenia i odbioru paczki niezbędna jest aplikacja InPost Mobile, zalogowana na podany w zamówieniu numer telefonu.
+                    </p>
+                  </div>
                 )}
                 {isLocker && order.inpostPointId && (
                   <div className="mt-4 p-3 bg-[#1a1a1a] border border-[#333] rounded-sm">

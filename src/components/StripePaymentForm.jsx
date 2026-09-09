@@ -37,7 +37,7 @@ export default function StripePaymentForm({ returnUrl }) {
 
   return (
     <form onSubmit={handleSubmit} className="w-full mt-6 bg-[#111] p-6 rounded-sm border border-[#222]">
-      <PaymentElement id="payment-element" options={{ layout: 'tabs' }} />
+      <PaymentElement id="payment-element" options={{ layout: 'tabs', wallets: { googlePay: 'auto', applePay: 'auto' } }} />
       {error && <div className="text-red-500 mt-4 text-sm font-bold">{error}</div>}
       <button 
         disabled={isLoading || !stripe || !elements} 

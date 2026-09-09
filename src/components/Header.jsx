@@ -53,17 +53,48 @@ export default function Header({ currentPath = window.location.pathname, storefr
     : 'bg-black text-white'
   const topbarDotClassName = storefrontSettings.saleEnabled ? 'text-red-400' : 'text-green-500'
 
+  const announcementText = storefrontSettings.announcementText || 'DROP 01 | ZOSTAŁO MAŁO'
+
   return (
     <div className="fixed top-0 left-0 w-full z-50 bg-[#0a0a0a]/90 backdrop-blur-lg border-b border-[#222] overflow-visible transition-all duration-300">
       <HighlandPattern />
-      
+
       <div className="relative z-10 flex flex-col w-full">
+        {/* Announcement Bar — DROP 01 */}
+        {storefrontSettings.announcementEnabled && (
+          <div className="relative overflow-hidden border-b border-red-900/60 bg-gradient-to-r from-red-950 via-[#1a0000] to-red-950 py-2">
+            {/* Pulsujące tło */}
+            <div className="absolute inset-0 bg-red-900/10 animate-pulse pointer-events-none" />
+            {/* Scrolling tekst */}
+            <div className="flex whitespace-nowrap">
+              <div className="flex animate-[marquee_18s_linear_infinite] items-center gap-12">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <span key={i} className="inline-flex items-center gap-4 text-[11px] font-black tracking-[0.35em] text-red-100 uppercase font-montserrat">
+                    <span className="text-red-400 text-[8px]">◆</span>
+                    {announcementText}
+                  </span>
+                ))}
+              </div>
+              {/* Duplikat dla seamless loop */}
+              <div className="flex animate-[marquee_18s_linear_infinite] items-center gap-12" aria-hidden>
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <span key={i} className="inline-flex items-center gap-4 text-[11px] font-black tracking-[0.35em] text-red-100 uppercase font-montserrat">
+                    <span className="text-red-400 text-[8px]">◆</span>
+                    {announcementText}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Top Bar */}
         <div className={`${topbarClassName} text-center py-2 border-b border-[#222] w-full`}>
           <p className="text-fluid-xs tracking-widest font-medium uppercase px-4 font-montserrat">
             <span className={`${topbarDotClassName} mr-2`}>●</span> {topbarText}
           </p>
         </div>
+
 
         {/* Main Navigation */}
         <header className="w-full px-fluid-sm py-4 md:py-6 flex justify-between items-center text-white">

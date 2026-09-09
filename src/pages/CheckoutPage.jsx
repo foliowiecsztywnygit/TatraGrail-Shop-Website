@@ -26,7 +26,9 @@ export default function CheckoutPage() {
   };
 
   const savedCheckoutData = loadSavedData();
-  const [checkoutMode, setCheckoutMode] = useState(savedCheckoutData.checkoutMode === 'quick' ? 'quick' : 'standard');
+  const initialCheckoutMode = savedCheckoutData.checkoutMode === 'quick' ? 'quick' : 'standard';
+  const [checkoutMode, setCheckoutMode] = useState(initialCheckoutMode);
+  const [deliveryMethod, setDeliveryMethod] = useState(initialCheckoutMode === 'quick' ? 'locker' : 'courier'); // 'courier' lub 'locker'
 
   const { register, handleSubmit, watch, formState: { errors } } = useForm({
     defaultValues: savedCheckoutData,
@@ -45,8 +47,6 @@ export default function CheckoutPage() {
   const [discount, setDiscount] = useState(0);
   const [promoError, setPromoError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  const [deliveryMethod, setDeliveryMethod] = useState('courier'); // 'courier' lub 'locker'
   const [inpostPoint, setInpostPoint] = useState(null);
   const [showGeowidget, setShowGeowidget] = useState(false);
   
@@ -473,6 +473,14 @@ export default function CheckoutPage() {
                         Wybierz paczkomat z mapy
                       </button>
                     )}
+                  </div>
+                )}
+                
+                {deliveryMethod === 'locker' && (
+                  <div className="mt-2 p-3 bg-blue-900/20 border border-blue-500/30 rounded-sm">
+                    <p className="text-xs text-blue-200">
+                      <strong>Uwaga:</strong> Do odbioru i śledzenia paczki z Paczkomatu niezbędna jest darmowa aplikacja <strong>InPost Mobile</strong> (zarejestrowana na Twój numer telefonu).
+                    </p>
                   </div>
                 )}
               </div>

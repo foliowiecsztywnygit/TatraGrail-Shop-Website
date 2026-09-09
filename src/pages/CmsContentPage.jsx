@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { Clock3, Mail, MapPin, Phone, RotateCcw, ShieldCheck, Truck } from 'lucide-react'
+import { Clock3, Mail, Phone, RotateCcw, ShieldCheck, Truck } from 'lucide-react'
 import { apiJson } from '../lib/api'
 import { useSeo } from '../lib/seo'
 
@@ -151,42 +151,23 @@ function ShippingMeta({ customData }) {
 }
 
 function ContactMeta({ customData }) {
-  const hours = customData?.workingHours || []
   return (
-    <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
-      <div className="space-y-4 border border-zinc-800 bg-black/40 p-6 text-sm text-zinc-300">
-        <div className="flex items-start gap-3">
-          <MapPin className="mt-0.5 h-5 w-5 text-zinc-400" />
-          <div>
-            <p className="font-bold text-white">{customData?.companyName || 'TatraGrail'}</p>
-            <p>{customData?.address}</p>
-          </div>
-        </div>
-        <div className="flex items-start gap-3">
-          <Mail className="mt-0.5 h-5 w-5 text-zinc-400" />
-          <a href={`mailto:${customData?.email || ''}`} className="hover:text-white">{customData?.email}</a>
-        </div>
-        <div className="flex items-start gap-3">
-          <Phone className="mt-0.5 h-5 w-5 text-zinc-400" />
-          <a href={`tel:${customData?.phone || ''}`} className="hover:text-white">{customData?.phone}</a>
-        </div>
-        <div className="flex items-start gap-3">
-          <Clock3 className="mt-0.5 h-5 w-5 text-zinc-400" />
-          <div className="space-y-1">
-            {hours.map((item) => (
-              <p key={item.label}>
-                <span className="font-bold text-white">{item.label}:</span> {item.value}
-              </p>
-            ))}
-          </div>
-        </div>
+    <div className="space-y-4 border border-zinc-800 bg-black/40 p-6 text-sm text-zinc-300">
+      <div className="flex items-start gap-3">
+        <Mail className="mt-0.5 h-5 w-5 text-zinc-400" />
+        <a href={`mailto:${customData?.email || ''}`} className="hover:text-white">{customData?.email}</a>
       </div>
-      <div className="min-h-[320px] overflow-hidden border border-zinc-800 bg-zinc-900">
-        {customData?.mapEmbedUrl ? (
-          <iframe title="Mapa dojazdu" src={customData.mapEmbedUrl} className="h-full min-h-[320px] w-full" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
-        ) : (
-          <div className="flex h-full min-h-[320px] items-center justify-center text-zinc-500">Brak skonfigurowanej mapy.</div>
-        )}
+      <div className="flex items-start gap-3">
+        <Phone className="mt-0.5 h-5 w-5 text-zinc-400" />
+        <a href={`tel:${customData?.phone || ''}`} className="hover:text-white">{customData?.phone}</a>
+      </div>
+      <div className="flex items-start gap-3">
+        <Clock3 className="mt-0.5 h-5 w-5 text-zinc-400" />
+        <p>
+          <span className="font-bold text-white">Dostępność:</span>{' '}
+          <span className="text-white tracking-widest">{customData?.availability || '24/7'}</span>
+          {' '}— jesteśmy dostępni przez całą dobę, 7 dni w tygodniu.
+        </p>
       </div>
     </div>
   )
@@ -245,7 +226,7 @@ function PageModules({ page }) {
             <RotateCcw className="mb-4 h-6 w-6 text-zinc-300" />
             <h3 className="mb-3 text-lg font-bold text-white">Okno zwrotu</h3>
             <p>Na zwrot masz {page.customData?.returnWindowDays || 30} dni od otrzymania przesylki.</p>
-            <p className="mt-4">Pytania dotyczace zwrotow kieruj na: {page.customData?.returnEmail || 'returns@tatragrail.com'}.</p>
+            <p className="mt-4">Pytania dotyczace zwrotow kieruj na: {page.customData?.returnEmail || 'returns@tatragrail.pl'}.</p>
           </div>
         </div>
         <ReturnForm page={page} />

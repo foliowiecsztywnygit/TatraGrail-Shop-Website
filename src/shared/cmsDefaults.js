@@ -153,7 +153,7 @@ export const defaultCmsPages = [
         { name: 'Dostawa UE', price: '39.00', eta: '3-5 dni roboczych' }
       ],
       returnWindowDays: 30,
-      returnEmail: 'returns@tatragrail.com',
+      returnEmail: 'returns@tatragrail.pl',
       returnInstructions: 'Wypelnij formularz zwrotu, podaj numer zamowienia i opisz powod. Otrzymasz dalsze instrukcje na e-mail.',
       complaintsInstructions: 'W reklamacji opisz problem i dolacz zdjecia produktu, jesli to mozliwe.'
     }
@@ -207,15 +207,9 @@ export const defaultCmsPages = [
     `.trim(),
     customData: {
       companyName: 'TatraGrail',
-      email: 'kontakt@tatragrail.com',
-      phone: '+48 600 700 800',
-      address: 'ul. Gorska 12, 34-500 Zakopane',
-      mapEmbedUrl: 'https://www.google.com/maps?q=Zakopane&output=embed',
-      workingHours: [
-        { label: 'Pon-Pt', value: '09:00 - 17:00' },
-        { label: 'Sobota', value: '10:00 - 14:00' },
-        { label: 'Niedziela', value: 'Nieczynne' }
-      ]
+      email: 'kontakt@tatragrail.pl',
+      phone: '+48600176361',
+      availability: '24/7'
     }
   },
   {

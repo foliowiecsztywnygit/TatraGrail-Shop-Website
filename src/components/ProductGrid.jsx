@@ -31,7 +31,11 @@ export default function ProductGrid({ categories = categoriesData }) {
 
             {/* Grid */}
             <div className="max-w-[1800px] mx-auto px-fluid-sm">
-              <div className={`grid grid-cols-2 gap-x-3 gap-y-5 sm:gap-x-fluid-sm sm:gap-y-fluid-md lg:grid-cols-4 ${
+              <div className={`grid grid-cols-2 gap-x-3 gap-y-5 sm:gap-x-fluid-sm sm:gap-y-fluid-md ${
+                category.products.length === 3
+                  ? 'lg:grid-cols-3'
+                  : 'lg:grid-cols-4'
+              } ${
                 gridView === 'minimal' ? 'xl:gap-x-5' : ''
               }`}>
                 {category.products.map(product => (

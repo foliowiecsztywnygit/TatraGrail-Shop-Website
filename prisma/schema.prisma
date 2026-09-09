@@ -133,6 +133,7 @@ model Product {
   dropFeatured        Boolean          @default(false)
   colors              String?
   sizes               String?
+  sizeStock           String?          // JSON: {"S":10,"M":5,"L":0,...}
   seoTitle            String?
   metaDescription     String?
   createdAt           DateTime         @default(now())
