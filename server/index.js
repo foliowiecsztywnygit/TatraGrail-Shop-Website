@@ -2164,6 +2164,31 @@ app.post('/api/admin/upload', requireAdmin, upload.array('files', 10), async (re
   });
 });
 
+app.get('/api/admin/db/download', requireAdmin, (req, res) => {
+  const dbUrl = process.env.DATABASE_URL || `file:${path.join(projectRoot, 'prisma', 'dev.db')}`;
+  const relativeDbPath = dbUrl.replace(/^file:/, '');
+  const absoluteDbPath = path.resolve(projectRoot, 'prisma', relativeDbPath);
+  res.download(absoluteDbPath, 'dev.db');
+});
+
+app.post('/api/admin/db/upload', requireAdmin, upload.single('dbfile'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Brak pliku' });
+  const dbUrl = process.env.DATABASE_URL || `file:${path.join(projectRoot, 'prisma', 'dev.db')}`;
+  const relativeDbPath = dbUrl.replace(/^file:/, '');
+  const absoluteDbPath = path.resolve(projectRoot, 'prisma', relativeDbPath);
+  
+  try {
+    await fsPromises.copyFile(req.file.path, absoluteDbPath);
+    res.json({ success: true, message: 'Baza danych wgrana pomyślnie. Serwer uruchomi się ponownie za chwilę...' });
+    setTimeout(() => {
+      process.exit(0); // Force restart to reconnect Prisma
+    }, 1500);
+  } catch (error) {
+    console.error('Błąd wgrywania bazy:', error);
+    res.status(500).json({ error: 'Nie udało się wgrać bazy danych' });
+  }
+});
+
 app.get('/api/admin/pages', requireAdmin, async (req, res) => {
   const pages = await prisma.cmsPage.findMany({ orderBy: { key: 'asc' } });
   return res.json({ pages: pages.map(serializePage) });

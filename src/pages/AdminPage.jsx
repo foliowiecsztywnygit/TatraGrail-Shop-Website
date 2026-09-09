@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Archive, Boxes, Copy, FileClock, Files, Filter, LayoutDashboard, LogOut, Mail, Megaphone, Package2, Plus, RefreshCw, Save, Search, Send, Trash2, Upload } from 'lucide-react'
+import { Archive, Boxes, Copy, Database, Download, FileClock, Files, Filter, LayoutDashboard, LogOut, Mail, Megaphone, Package2, Plus, RefreshCw, Save, Search, Send, Trash2, Upload } from 'lucide-react'
 import RichTextEditor from '../components/RichTextEditor'
 import AdminOrdersPanel from '../components/admin/AdminOrdersPanel'
 import InventoryPanel from '../components/admin/InventoryPanel'
@@ -1249,6 +1249,69 @@ export default function AdminPage() {
                 </div>
               )
             })()}
+            <section className="border border-zinc-800 bg-black/70 p-6">
+              <SectionTitle icon={Database} title="Zarządzanie Bazą Danych (Kopie Zapasowe)" />
+              <div className="flex flex-col xl:flex-row items-start xl:items-center gap-6 mt-4">
+                <a
+                  href="/api/admin/db/download"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-12 items-center justify-center gap-2 border border-zinc-600 bg-zinc-800 px-6 text-xs font-black uppercase tracking-[0.2em] transition hover:bg-zinc-700 hover:border-zinc-500 whitespace-nowrap"
+                >
+                  <Download size={16} />
+                  Pobierz Kopię Bazy
+                </a>
+                
+                <div className="flex flex-col md:flex-row items-start md:items-center gap-4 border border-zinc-700 p-4 bg-zinc-900/50 w-full xl:w-auto">
+                  <label className="text-xs uppercase tracking-widest text-zinc-400 whitespace-nowrap">
+                    Wgraj lokalną bazę:
+                  </label>
+                  <input
+                    type="file"
+                    accept=".db,.sqlite,application/x-sqlite3"
+                    id="db-upload-input"
+                    className="text-xs text-zinc-400 file:mr-4 file:border file:border-white file:bg-white file:px-4 file:py-2 file:text-xs file:font-black file:uppercase file:text-black hover:file:bg-zinc-200 cursor-pointer w-full md:w-auto"
+                  />
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const fileInput = document.getElementById('db-upload-input');
+                      if (!fileInput.files.length) {
+                        alert('Wybierz plik dev.db przed wgrywaniem!');
+                        return;
+                      }
+                      if (!window.confirm('UWAGA! Wgrywana baza zastąpi obecną produkcyjną bazę danych! Upewnij się, że wgrywasz poprawny plik (dev.db). Kontynuować?')) return;
+                      
+                      const formData = new FormData();
+                      formData.append('dbfile', fileInput.files[0]);
+                      
+                      try {
+                        const token = localStorage.getItem('tg_admin_token');
+                        const res = await fetch('/api/admin/db/upload', {
+                          method: 'POST',
+                          headers: { 'Authorization': `Bearer ${token}` },
+                          body: formData
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                          alert(data.message || 'Zaktualizowano pomyślnie. Strona zostanie przeładowana.');
+                          setTimeout(() => window.location.reload(), 3000);
+                        } else {
+                          alert(data.error || 'Wystąpił błąd przy wgrywaniu bazy.');
+                        }
+                      } catch (err) {
+                        alert('Błąd połączenia z serwerem.');
+                      }
+                    }}
+                    className="inline-flex h-12 items-center justify-center gap-2 bg-red-600 text-white px-6 text-xs font-black uppercase tracking-[0.2em] transition hover:bg-red-500 whitespace-nowrap w-full md:w-auto mt-2 md:mt-0"
+                  >
+                    <Upload size={16} />
+                    Wgraj i Zastąp
+                  </button>
+                </div>
+              </div>
+            </section>
+            
             <section className="border border-zinc-800 bg-black/70 p-6">
               <SectionTitle icon={LogOut} title="Bezpieczenstwo konta" />
               <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-3" onSubmit={handlePasswordSubmit}>
