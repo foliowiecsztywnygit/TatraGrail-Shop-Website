@@ -36,7 +36,7 @@ export default function AboutUsSection() {
                 </div>
                 <h3 className="text-xl font-black uppercase tracking-wide mb-3">100% Made in Poland</h3>
                 <p className="text-gray-400 font-light leading-relaxed">
-                  Z dumą informujemy, że wszystko było wyprodukowane w 100% w Polsce. Od projektu, przez dobór najwyższej jakości materiałów, aż po ostatni szew — wszystko dzieje się lokalnie, wspierając nasz rodzimy rynek.
+                  Z dumą informujemy, że wszystko było wyprodukowane w 100% w Polsce. Od projektu, przez dobór najwyższej jakości materiałów, aż po ostatni szew — wszystko dzieje się lokalnie, wspierając nasz rodzimy rynek. Bez ściemy z Alibaby czy innych Chin.
                 </p>
               </div>
 
