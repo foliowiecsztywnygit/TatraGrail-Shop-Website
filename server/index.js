@@ -1052,7 +1052,7 @@ const sendOrderConfirmationEmail = async (order) => {
     ? `Paczkomat InPost: <strong>${escapeHtml(order.inpostPointId)}</strong><br/>${escapeHtml(order.inpostPointAddress)}, ${escapeHtml(order.inpostPointPostalCode)} ${escapeHtml(order.inpostPointCity)}`
     : `Kurier InPost<br/>${escapeHtml(order.street)} ${escapeHtml(order.houseNumber)}, ${escapeHtml(order.postalCode)} ${escapeHtml(order.city)}`;
 
-  await resend.emails.send({
+  const { data, error } = await resend.emails.send({
     from: 'TatraGrail <no-reply@tatragrail.pl>',
     to: order.email,
     subject: `Potwierdzenie zamowienia ${escapeHtml(order.orderNumber)}`,
@@ -1066,6 +1066,12 @@ const sendOrderConfirmationEmail = async (order) => {
       <p><a href="${frontendOrigin()}/tracking/${order.trackingToken}">Szczegoly zamowienia</a></p>
     `
   });
+
+  if (error) {
+    console.error(`[Resend Error] Failed to send order confirmation for ${order.orderNumber}:`, error);
+  } else {
+    console.log(`[Resend] Successfully sent order confirmation for ${order.orderNumber}. ID:`, data?.id);
+  }
 };
 
 const normalizePhone = (value) => String(value || '').replace(/[^\d+]/g, '').trim();
@@ -1627,7 +1633,7 @@ app.post('/api/contact-submissions', async (req, res) => {
   });
 
   // Powiadomienie dla admina
-  await resend.emails.send({
+  const { error: resendError } = await resend.emails.send({
     from: 'TatraGrail <no-reply@tatragrail.pl>',
     to: 'kontakt@tatragrail.pl',
     subject: `Nowa wiadomość od ${escapeHtml(submission.name)}`,
@@ -1639,7 +1645,10 @@ app.post('/api/contact-submissions', async (req, res) => {
       <p><strong>Wiadomość:</strong></p>
       <blockquote style="border-left:3px solid #ccc;margin:0;padding:0 1em;color:#555">${escapeHtml(submission.message).replace(/\n/g, '<br/>')}</blockquote>
     `
-  }).catch((err) => console.error('[resend] contact notification failed:', err));
+  });
+  if (resendError) {
+    console.error('[resend] contact notification failed:', resendError);
+  }
 
   return res.json({ success: true });
 });
