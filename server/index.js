@@ -1347,8 +1347,12 @@ app.post('/api/create-payment-intent', async (req, res) => {
       if (promoResult) {
         const rawDiscount = promoResult.type === 'percentage'
           ? subtotal * (promoResult.value / 100)
-          : promoResult.value;
-        discount = Math.min(Math.max(0, rawDiscount), subtotal);
+          : promoResult.type === 'free_shipping' ? shipping : promoResult.value;
+        
+        discount = promoResult.type === 'free_shipping' 
+          ? rawDiscount 
+          : Math.min(Math.max(0, rawDiscount), subtotal);
+        
         appliedCode = promoResult.code;
         partnerId = promoResult.partnerId;
       }
@@ -2315,6 +2319,61 @@ app.get('/api/admin/submissions', requireAdmin, async (req, res) => {
   ]);
 
   return res.json({ contacts, returns });
+});
+
+app.get('/api/admin/promocodes', requireAdmin, async (req, res) => {
+  const codes = await prisma.promoCode.findMany({ orderBy: { code: 'asc' } });
+  return res.json(codes);
+});
+
+app.post('/api/admin/promocodes', requireAdmin, async (req, res) => {
+  const { code, type, value, active, expiration, usageLimit } = req.body || {};
+  if (!code || !type || value == null) return res.status(400).json({ error: 'Wymagane pola to kod, typ i wartość.' });
+  
+  try {
+    const created = await prisma.promoCode.create({
+      data: {
+        code: String(code).trim().toUpperCase(),
+        type: String(type),
+        value: Number(value) || 0,
+        active: Boolean(active !== false),
+        expiration: expiration ? new Date(expiration) : null,
+        usageLimit: usageLimit ? Number(usageLimit) : null
+      }
+    });
+    return res.json(created);
+  } catch (err) {
+    return res.status(400).json({ error: 'Nie udało się dodać kodu (być może już istnieje).' });
+  }
+});
+
+app.put('/api/admin/promocodes/:id', requireAdmin, async (req, res) => {
+  const { code, type, value, active, expiration, usageLimit } = req.body || {};
+  try {
+    const updated = await prisma.promoCode.update({
+      where: { id: req.params.id },
+      data: {
+        code: code ? String(code).trim().toUpperCase() : undefined,
+        type: type ? String(type) : undefined,
+        value: value != null ? Number(value) : undefined,
+        active: active != null ? Boolean(active) : undefined,
+        expiration: expiration === '' ? null : expiration ? new Date(expiration) : undefined,
+        usageLimit: usageLimit === '' ? null : usageLimit != null ? Number(usageLimit) : undefined
+      }
+    });
+    return res.json(updated);
+  } catch (err) {
+    return res.status(400).json({ error: 'Nie udało się zaktualizować kodu.' });
+  }
+});
+
+app.delete('/api/admin/promocodes/:id', requireAdmin, async (req, res) => {
+  try {
+    await prisma.promoCode.delete({ where: { id: req.params.id } });
+    return res.json({ success: true });
+  } catch (err) {
+    return res.status(400).json({ error: 'Nie udało się usunąć kodu.' });
+  }
 });
 
 app.use(express.static(distDir));

@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Archive, Boxes, Copy, Database, Download, FileClock, Files, Filter, LayoutDashboard, LogOut, Mail, Megaphone, Package2, Plus, RefreshCw, Save, Search, Send, Trash2, Upload } from 'lucide-react'
+import { Archive, Boxes, Copy, Database, Download, FileClock, Files, Filter, LayoutDashboard, LogOut, Mail, Megaphone, Package2, Plus, RefreshCw, Save, Search, Send, Ticket, Trash2, Upload } from 'lucide-react'
 import RichTextEditor from '../components/RichTextEditor'
 import AdminOrdersPanel from '../components/admin/AdminOrdersPanel'
 import InventoryPanel from '../components/admin/InventoryPanel'
+import PromoCodesPanel from '../components/admin/PromoCodesPanel'
 import { apiFetch, apiFormData, apiJson, clearAdminToken, getAdminToken, getApiBaseUrl, setAdminToken } from '../lib/api'
 
 const pageLabels = {
@@ -173,7 +174,7 @@ const mapOrderToForm = (order) => ({
   items: order.items || []
 })
 
-const adminTabs = ['dashboard', 'products', 'pages', 'orders', 'submissions']
+const adminTabs = ['dashboard', 'products', 'pages', 'orders', 'submissions', 'promo_codes']
 const ADMIN_CONTEXT_KEY = 'tatragrail-admin-context'
 
 const sanitizeTab = (value) => (adminTabs.includes(value) ? value : 'dashboard')
@@ -1153,7 +1154,8 @@ export default function AdminPage() {
               ['inventory', 'Magazyn', Boxes],
               ['pages', 'Strony', Files],
               ['orders', 'Zamowienia', Send],
-              ['submissions', 'Formularze', Mail]
+              ['submissions', 'Formularze', Mail],
+              ['promo_codes', 'Kody Rabatowe', Ticket]
             ].map(([value, label, Icon]) => (
               <button key={value} type="button" onClick={() => setTab(value)} className={`inline-flex items-center gap-2 border px-4 py-3 text-xs uppercase tracking-[0.2em] transition ${tab === value ? 'border-white bg-white text-black' : 'border-zinc-700 text-zinc-200 hover:border-white'}`}>
                 <Icon size={14} />
@@ -1172,6 +1174,8 @@ export default function AdminPage() {
             {feedback.message}
           </div>
         ) : null}
+
+        {tab === 'promo_codes' && <PromoCodesPanel />}
 
         {tab === 'dashboard' && (
           <div className="space-y-6">

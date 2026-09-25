@@ -180,6 +180,8 @@ export default function CheckoutPage() {
       const data = await apiJson('/api/discount/validate', 'POST', { code: promoCode, cartTotal: subtotal });
       if (data.promo.type === 'percentage') {
         setDiscount(subtotal * (data.promo.value / 100));
+      } else if (data.promo.type === 'free_shipping') {
+        setDiscount(shipping);
       } else {
         setDiscount(data.promo.value);
       }
