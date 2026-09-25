@@ -469,7 +469,7 @@ const buildProductInput = (body, existingProduct = null) => {
       salePrice: body.salePrice === '' || body.salePrice === null || body.salePrice === undefined ? null : Number(body.salePrice),
       currency: String(body.currency || 'PLN').trim() || 'PLN',
       vatRate: Number(body.vatRate ?? 23),
-      stock: Number(body.stock ?? 0),
+      stock: sizes.length > 0 ? (existingProduct ? existingProduct.stock : 0) : Number(body.stock ?? 0),
       weight: body.weight === '' || body.weight === null || body.weight === undefined ? null : Number(body.weight),
       width: body.width === '' || body.width === null || body.width === undefined ? null : Number(body.width),
       height: body.height === '' || body.height === null || body.height === undefined ? null : Number(body.height),
@@ -506,8 +506,11 @@ const validateProductPayload = (body) => {
   const vatRate = Number(body.vatRate ?? 23);
   if (!Number.isFinite(vatRate) || vatRate < 0) errors.vatRate = 'Stawka VAT musi byc poprawna.';
 
-  const stock = Number(body.stock ?? 0);
-  if (!Number.isInteger(stock) || stock < 0) errors.stock = 'Stan magazynowy musi byc liczba calkowita >= 0.';
+  const hasSizes = Array.isArray(body.sizes) && body.sizes.length > 0;
+  if (!hasSizes) {
+    const stock = Number(body.stock ?? 0);
+    if (!Number.isInteger(stock) || stock < 0) errors.stock = 'Stan magazynowy musi byc liczba calkowita >= 0.';
+  }
 
   const images = Array.isArray(body.images) ? body.images.filter((image) => image?.url) : [];
   if (!images.length) errors.images = 'Dodaj przynajmniej jedno zdjecie produktu.';
@@ -685,7 +688,11 @@ const writeProductHistory = async ({ productId, author, action, snapshot }) => {
 };
 
 const saveProductWithHistory = async ({ body, productId = null, author }) => {
-  const { values, images } = buildProductInput(body);
+  let existingProduct = null;
+  if (productId) {
+    existingProduct = await prisma.product.findUnique({ where: { id: productId } });
+  }
+  const { values, images } = buildProductInput(body, existingProduct);
   const imageCreate = images.map((image) => ({
     url: image.url,
     alt: image.alt,

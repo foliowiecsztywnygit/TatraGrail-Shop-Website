@@ -1507,10 +1507,12 @@ export default function AdminPage() {
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-4">
-                  <Field label="Stan magazynowy">
-                    <Input type="number" value={productForm.stock} onChange={(event) => setProductForm((prev) => ({ ...prev, stock: event.target.value }))} />
-                    {productErrors.stock ? <span className="text-red-400">{productErrors.stock}</span> : null}
-                  </Field>
+                  {!productForm.sizesText?.trim() && (
+                    <Field label="Stan magazynowy">
+                      <Input type="number" value={productForm.stock} onChange={(event) => setProductForm((prev) => ({ ...prev, stock: event.target.value }))} />
+                      {productErrors.stock ? <span className="text-red-400">{productErrors.stock}</span> : null}
+                    </Field>
+                  )}
                   <Field label="Waga (kg)">
                     <Input type="number" step="0.01" value={productForm.weight} onChange={(event) => setProductForm((prev) => ({ ...prev, weight: event.target.value }))} />
                   </Field>
