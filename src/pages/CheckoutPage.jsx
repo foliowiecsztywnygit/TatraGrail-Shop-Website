@@ -66,7 +66,7 @@ export default function CheckoutPage() {
       // Domyślny widok - Warszawa
       mapInstanceRef.current = window.L.map(mapRef.current).setView([52.2297, 21.0122], 12);
       
-      window.L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+      window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Tiles style by <a href="https://www.hotosm.org/" target="_blank">HOT</a>'
       }).addTo(mapInstanceRef.current);
 
@@ -259,8 +259,9 @@ export default function CheckoutPage() {
               <button onClick={() => setShowGeowidget(false)} className="text-gray-400 hover:text-white">Zamknij</button>
             </div>
             
-            <div className="p-4 bg-gray-100 flex gap-2 shrink-0">
-              <form onSubmit={handleMapSearch} className="flex-1 flex gap-2">
+            <div className="p-4 bg-gray-100 shrink-0">
+              <p className="text-sm text-red-500 mb-2 font-bold uppercase tracking-wide">Pamiętaj, że musisz wpisać swoją lokalizację (miasto / kod pocztowy), żeby pojawiły się paczkomaty na mapie</p>
+              <form onSubmit={handleMapSearch} className="flex gap-2">
                 <input 
                   type="text" 
                   value={searchQuery}

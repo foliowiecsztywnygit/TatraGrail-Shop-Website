@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { apiJson } from '../lib/api'
 
-const brandLogoUrl = new URL('../../tatragraillogo.png', import.meta.url).href
+const brandLogoUrl = '/tatragraillogo.png'
 
 const formatRemaining = (ms) => {
   const safe = Math.max(0, ms)

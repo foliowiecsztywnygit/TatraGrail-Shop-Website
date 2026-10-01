@@ -896,7 +896,12 @@ app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, 
 
   if (event.type === 'payment_intent.succeeded') {
     const paymentIntent = event.data.object;
-    const orderId = paymentIntent.metadata.orderId;
+    const orderId = paymentIntent.metadata?.orderId;
+
+    if (!orderId) {
+      console.error('Webhook Error: payment_intent.succeeded received without orderId in metadata');
+      return res.status(400).send('Missing orderId in metadata');
+    }
 
     try {
       const order = await prisma.order.update({

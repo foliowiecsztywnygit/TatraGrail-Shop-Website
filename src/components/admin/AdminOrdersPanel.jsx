@@ -197,6 +197,14 @@ export default function AdminOrdersPanel({
                 <p className="mt-2 text-sm text-zinc-400">
                   Zamowienie z {new Date(orderForm.createdAt).toLocaleString()} • ostatnia aktualizacja {new Date(orderForm.updatedAt).toLocaleString()}
                 </p>
+                {/* SZYBKIE AKCJE */}
+                <div className="mt-4 pt-4 border-t border-zinc-800 flex flex-wrap gap-2">
+                  <p className="w-full text-xs uppercase tracking-[0.2em] text-zinc-500 mb-1">Szybkie zmiany statusu</p>
+                  <button type="button" onClick={() => { setOrderForm(p => ({ ...p, fulfillmentStatus: 'processing' })); setTimeout(() => document.getElementById('save-order-btn')?.click(), 50); }} className="px-3 py-1.5 border border-sky-500/50 bg-sky-950/30 text-sky-200 text-[10px] font-bold uppercase tracking-widest hover:border-sky-400 transition">W Trakcie</button>
+                  <button type="button" onClick={() => { setOrderForm(p => ({ ...p, fulfillmentStatus: 'packed' })); setTimeout(() => document.getElementById('save-order-btn')?.click(), 50); }} className="px-3 py-1.5 border border-indigo-500/50 bg-indigo-950/30 text-indigo-200 text-[10px] font-bold uppercase tracking-widest hover:border-indigo-400 transition">Spakowane</button>
+                  <button type="button" onClick={() => { setOrderForm(p => ({ ...p, fulfillmentStatus: 'shipped', shipmentStatus: 'sent' })); setTimeout(() => document.getElementById('save-order-btn')?.click(), 50); }} className="px-3 py-1.5 border border-violet-500/50 bg-violet-950/30 text-violet-200 text-[10px] font-bold uppercase tracking-widest hover:border-violet-400 transition">Wysłane</button>
+                  <button type="button" onClick={() => { setOrderForm(p => ({ ...p, fulfillmentStatus: 'delivered', shipmentStatus: 'delivered' })); setTimeout(() => document.getElementById('save-order-btn')?.click(), 50); }} className="px-3 py-1.5 border border-emerald-500/50 bg-emerald-950/30 text-emerald-200 text-[10px] font-bold uppercase tracking-widest hover:border-emerald-400 transition">Dostarczone</button>
+                </div>
               </div>
               <div className="flex flex-wrap gap-2">
                 <button type="button" onClick={onCopyAddress} className="inline-flex items-center gap-2 border border-zinc-700 px-3 py-2 text-xs uppercase tracking-[0.2em] transition hover:border-white">
@@ -421,7 +429,7 @@ export default function AdminOrdersPanel({
 
             <div className="flex flex-wrap items-center justify-between gap-3 border border-zinc-800 bg-zinc-950 p-4">
               <p className="text-sm text-zinc-400">Zmiany zapisuja statusy, dane wysylkowe oraz wszystkie pola potrzebne do przygotowania paczki.</p>
-              <button type="submit" className="inline-flex items-center gap-2 border border-white bg-white px-4 py-3 text-xs font-bold uppercase tracking-[0.2em] text-black transition hover:bg-transparent hover:text-white">
+              <button id="save-order-btn" type="submit" className="inline-flex items-center gap-2 border border-white bg-white px-4 py-3 text-xs font-bold uppercase tracking-[0.2em] text-black transition hover:bg-transparent hover:text-white">
                 <Save size={14} />
                 Zapisz zamowienie
               </button>

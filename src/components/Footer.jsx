@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { ArrowRight } from 'lucide-react'
 import HighlandPattern from './HighlandPattern'
 
-const brandLogoUrl = new URL('../../tatragraillogo.png', import.meta.url).href
+const brandLogoUrl = '/tatragraillogo.png'
 
 export default function Footer() {
   const { t } = useTranslation();

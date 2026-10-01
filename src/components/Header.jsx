@@ -7,7 +7,7 @@ import { useCartStore } from '../store/cartStore'
 import { navigateTo, navigateToHomeSection } from '../lib/navigation'
 import { DEFAULT_STOREFRONT_SETTINGS } from '../lib/storefront'
 
-const brandLogoUrl = new URL('../../tatragraillogo.png', import.meta.url).href
+const brandLogoUrl = '/tatragraillogo.png'
 
 export default function Header({ currentPath = window.location.pathname, storefrontSettings = DEFAULT_STOREFRONT_SETTINGS }) {
   const { t, i18n } = useTranslation();
