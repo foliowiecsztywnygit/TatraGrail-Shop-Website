@@ -45,6 +45,7 @@ export const useCartStore = create(
         };
       }),
       clearCart: () => set({ items: [] }),
+      setItems: (newItems) => set({ items: newItems }),
       getSubtotal: () => {
         const { items } = get();
         return items.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0);

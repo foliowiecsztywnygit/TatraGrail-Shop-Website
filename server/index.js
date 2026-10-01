@@ -1247,6 +1247,71 @@ app.post('/api/discount/validate', async (req, res) => {
   }
 });
 
+app.post('/api/cart/validate', async (req, res) => {
+  const { cart } = req.body || {};
+  if (!Array.isArray(cart) || cart.length === 0) {
+    return res.json({ success: true, validCart: [], removedCount: 0 });
+  }
+
+  try {
+    const productIds = Array.from(new Set(cart.map(item => item.productId).filter(Boolean)));
+    const products = await prisma.product.findMany({
+      where: { id: { in: productIds }, deletedAt: null }
+    });
+    const productMap = new Map(products.map(p => [p.id, p]));
+
+    const validCart = [];
+    let removedCount = 0;
+
+    for (const item of cart) {
+      const product = productMap.get(item.productId);
+      
+      // If product doesn't exist, is discontinued, or archived, skip (remove)
+      if (!product || product.status === 'discontinued' || product.isArchived) {
+        removedCount++;
+        continue;
+      }
+
+      let availableQty = product.stock;
+
+      // Check size-specific stock if size is provided
+      if (item.size && product.sizeStock) {
+        try {
+          const sizeStock = JSON.parse(product.sizeStock);
+          if (typeof sizeStock === 'object' && sizeStock !== null && item.size in sizeStock) {
+            availableQty = Number(sizeStock[item.size] ?? 0);
+          } else {
+            availableQty = 0; // Size doesn't exist in stock mapping
+          }
+        } catch (_) {
+          availableQty = 0;
+        }
+      }
+
+      if (availableQty <= 0) {
+        removedCount++;
+        continue;
+      }
+
+      // Limit quantity to available stock
+      const requestedQty = Math.max(1, Math.floor(Number(item.quantity) || 1));
+      const finalQty = Math.min(requestedQty, availableQty);
+      
+      if (finalQty < requestedQty) {
+        // Technically not fully removed, but quantity was adjusted. We could count it as a change.
+        removedCount++; 
+      }
+
+      validCart.push({ ...item, quantity: finalQty });
+    }
+
+    return res.json({ success: true, validCart, removedCount });
+  } catch (error) {
+    console.error('Cart validation error:', error);
+    return res.status(500).json({ error: 'Server error during cart validation' });
+  }
+});
+
 app.post('/api/create-payment-intent', async (req, res) => {
   const { cart, customer, promoCode, delivery } = req.body || {};
 

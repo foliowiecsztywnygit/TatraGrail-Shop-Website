@@ -13,7 +13,7 @@ import { apiJson } from '../lib/api';
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 'pk_test_mock');
 
 export default function CheckoutPage() {
-  const { items, getSubtotal } = useCartStore();
+  const { items, getSubtotal, setItems } = useCartStore();
   const { t } = useTranslation();
   
   const loadSavedData = () => {
@@ -43,6 +43,26 @@ export default function CheckoutPage() {
     return () => subscription.unsubscribe();
   }, [watch, checkoutMode]);
 
+  // Weryfikacja stanu magazynowego przy wejściu do kasy
+  const [stockValidated, setStockValidated] = useState(false);
+  useEffect(() => {
+    if (stockValidated || items.length === 0) return;
+    const validateStock = async () => {
+      try {
+        const data = await apiJson('/api/cart/validate', 'POST', { cart: items });
+        if (data && data.success && data.removedCount > 0) {
+          setItems(data.validCart);
+          alert('Uwaga: Niektóre produkty w Twoim koszyku wyprzedały się lub zmniejszono ich ilość ze względu na ograniczone zapasy.');
+        }
+      } catch (e) {
+        console.error('Nie udało się zweryfikować stanu magazynowego:', e);
+      } finally {
+        setStockValidated(true);
+      }
+    };
+    validateStock();
+  }, [items, stockValidated, setItems]);
+
   const [promoCode, setPromoCode] = useState('');
   const [discount, setDiscount] = useState(0);
   const [promoError, setPromoError] = useState('');
@@ -66,8 +86,8 @@ export default function CheckoutPage() {
       // Domyślny widok - Warszawa
       mapInstanceRef.current = window.L.map(mapRef.current).setView([52.2297, 21.0122], 12);
       
-      window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Tiles style by <a href="https://www.hotosm.org/" target="_blank">HOT</a>'
+      window.L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
       }).addTo(mapInstanceRef.current);
 
       // Jeśli mamy wpisane miasto/ulicę z formularza, użyj go
