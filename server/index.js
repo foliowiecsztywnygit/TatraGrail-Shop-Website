@@ -1393,6 +1393,7 @@ app.post('/api/create-payment-intent', async (req, res) => {
     }
 
     const subtotal = resolvedCart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+    const shipping = 15;
     let discount = 0;
     let appliedCode = null;
     let partnerId = null;
@@ -1428,7 +1429,6 @@ app.post('/api/create-payment-intent', async (req, res) => {
       }
     }
 
-    const shipping = 15;
     const total = Math.max(0, subtotal - discount + shipping);
     const orderNumber = `TG-${new Date().getFullYear()}-${crypto.randomInt(100000, 999999)}`;
     const packageMetrics = estimatePackageMetrics(resolvedCart, products);
