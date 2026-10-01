@@ -176,7 +176,7 @@ const requireAdmin = (req, res, next) => {
 };
 
 const apiOrigin = (req) => `${req.protocol}://${req.get('host')}`;
-const frontendOrigin = () => process.env.FRONTEND_URL || 'http://localhost:5173';
+const frontendOrigin = () => process.env.FRONTEND_URL || (IS_PRODUCTION ? 'https://tatragrail.pl' : 'http://localhost:5173');
 
 const normalizeStoredAssetUrl = (value) => {
   if (!value) return value;
