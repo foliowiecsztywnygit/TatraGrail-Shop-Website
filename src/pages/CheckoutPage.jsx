@@ -86,8 +86,8 @@ export default function CheckoutPage() {
       // Domyślny widok - Warszawa
       mapInstanceRef.current = window.L.map(mapRef.current).setView([52.2297, 21.0122], 12);
       
-      window.L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+      window.L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), TomTom, 2012'
       }).addTo(mapInstanceRef.current);
 
       // Jeśli mamy wpisane miasto/ulicę z formularza, użyj go
